@@ -1,0 +1,719 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import type { VehicleEntry, Driver } from "@/types/parking";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ChevronLeft, Plus, Maximize2, X, Pencil, User } from "lucide-react";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import {
+  crearOActualizarConductor,
+  buscarConductoresPorDni,
+  type ConductorDB,
+} from "@/services/conductores.service";
+import { actualizarConductorEnIngreso } from "@/services/ingresos.service";
+import {
+  uploadIngresoImage,
+  getIngresoImages,
+  uploadDniImage,
+  getDniImages,
+} from "@/services/images.service";
+
+interface EntryDetailViewProps {
+  entry: VehicleEntry;
+  onUpdate: (id: string, updates: Partial<VehicleEntry>) => void;
+  onBack: () => void;
+}
+
+export function EntryDetailView({
+  entry,
+  onUpdate,
+  onBack,
+}: EntryDetailViewProps) {
+  const [activeTab, setActiveTab] = useState<"detail" | "images" | "driver">(
+    "detail",
+  );
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [loadingImage, setLoadingImage] = useState<string | null>(null);
+
+  const [isEditingDriver, setIsEditingDriver] = useState(!entry.driver);
+
+  const [driverForm, setDriverForm] = useState<Driver>(
+    entry.driver || {
+      name: "",
+      lastname: "",
+      dni: "",
+      phone: "",
+      dniFront: "",
+      dniBack: "",
+    },
+  );
+
+  const [dniSuggestions, setDniSuggestions] = useState<ConductorDB[]>([]);
+  const [dniLocked, setDniLocked] = useState(false);
+
+  const [dniImages, setDniImages] = useState<string[]>([]);
+  const [loadingDni, setLoadingDni] = useState(false);
+
+  const [dniFrontPreview, setDniFrontPreview] = useState<string | null>(null);
+  const [dniBackPreview, setDniBackPreview] = useState<string | null>(null);
+
+  const [dniFrontFile, setDniFrontFile] = useState<File | null>(null);
+  const [dniBackFile, setDniBackFile] = useState<File | null>(null);
+
+  useEffect(() => {
+    const loadDniImages = async () => {
+      if (!entry.driver?.id_conductor) return;
+
+      try {
+        const imgs = await getDniImages(entry.driver.id_conductor);
+        setDniImages(imgs);
+      } catch (err) {
+        console.error("Error cargando DNI", err);
+      }
+    };
+
+    loadDniImages();
+  }, [entry.driver]);
+
+  const [driverOriginal, setDriverOriginal] = useState(driverForm);
+
+  const saveDriver = async () => {
+    try {
+      const normalizedData = {
+        nombre: driverForm.name?.trim().toUpperCase(),
+        apellidos: driverForm.lastname?.trim().toUpperCase(),
+        dni: driverForm.dni?.trim().toUpperCase(),
+        telefono: driverForm.phone?.trim().toUpperCase(),
+      };
+
+      // 1️⃣ guardar conductor
+      const idConductor = await crearOActualizarConductor(normalizedData);
+
+      // 2️⃣ asociar ingreso
+      await actualizarConductorEnIngreso(Number(entry.id), idConductor);
+
+      // 3️⃣ crear driver final
+      const normalizedDriver = {
+        id_conductor: idConductor,
+        name: normalizedData.nombre,
+        lastname: normalizedData.apellidos,
+        dni: normalizedData.dni,
+        phone: normalizedData.telefono,
+      };
+
+      setDriverForm(normalizedDriver);
+
+      onUpdate(entry.id, {
+        driver: normalizedDriver,
+      });
+
+      setIsEditingDriver(false);
+    } catch (error) {
+      console.error("Error guardando conductor:", error);
+      alert("Error al guardar el conductor");
+    }
+  };
+
+  useEffect(() => {
+    const loadImages = async () => {
+      try {
+        const imgs = await getIngresoImages(Number(entry.id));
+
+        onUpdate(entry.id, {
+          images: imgs,
+        });
+      } catch (err) {
+        console.error("Error cargando imágenes", err);
+      }
+    };
+
+    loadImages();
+  }, [entry.id]);
+
+  return (
+    <div className="space-y-6 pb-20 animate-in fade-in slide-in-from-right-4 duration-300">
+      {/* HEADER */}
+      <div className="flex items-center gap-4">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="rounded-full bg-muted/50"
+          onClick={onBack}
+        >
+          <ChevronLeft className="h-6 w-6" />
+        </Button>
+        <div>
+          <h2 className="text-2xl font-black font-mono">{entry.plate1}</h2>
+          <p className="text-[10px] font-black text-muted-foreground uppercase">
+            ID: {entry.id}
+          </p>
+        </div>
+      </div>
+
+      {/* TABS */}
+      <div className="grid grid-cols-3 gap-2 bg-muted/30 p-1.5 rounded-2xl border">
+        {["detail", "images", "driver"].map((tab) => (
+          <Button
+            key={tab}
+            variant={activeTab === tab ? "default" : "ghost"}
+            className="rounded-xl h-10 font-bold text-xs"
+            onClick={() => setActiveTab(tab as any)}
+          >
+            {tab === "detail" && "Detalle"}
+            {tab === "images" && "Fotos"}
+            {tab === "driver" && "Conductor"}
+          </Button>
+        ))}
+      </div>
+
+      {activeTab === "detail" && (
+        <Card className="border-none shadow-xl rounded-3xl overflow-hidden">
+          <CardContent className="p-6 space-y-6">
+            {/* ID + ESTADO */}
+            <div className="flex justify-between items-start">
+              <div>
+                <p className="text-xs uppercase font-bold text-muted-foreground">
+                  ID Registro
+                </p>
+                <p className="text-xl font-black">{entry.id}</p>
+              </div>
+
+              <span
+                className={`px-3 py-1 rounded-full text-xs font-black ${
+                  entry.status === "active"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground"
+                }`}
+              >
+                {entry.status === "active"
+                  ? "ESTACIONADO"
+                  : "SALIDA REGISTRADA"}
+              </span>
+            </div>
+
+            {/* PLACAS */}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="p-3 bg-muted rounded-xl">
+                <p className="text-[10px] uppercase font-bold text-muted-foreground">
+                  Placa Principal
+                </p>
+                <p className="font-bold text-lg">{entry.plate1}</p>
+              </div>
+
+              <div className="p-3 bg-muted rounded-xl">
+                <p className="text-[10px] uppercase font-bold text-muted-foreground">
+                  Placa Secundaria
+                </p>
+                <p className="font-bold text-lg">{entry.plate2 || "-"}</p>
+              </div>
+            </div>
+
+            {/* DETALLE */}
+            <div className="space-y-3">
+              <DetailRow
+                label="Tipo de Vehículo"
+                value={entry.type}
+                capitalize
+              />
+              <DetailRow label="Propiedad" value={entry.ownership} uppercase />
+              <DetailRow
+                label="Fecha de Ingreso"
+                value={formatDateDMY(entry.entryDate)}
+              />
+              <DetailRow
+                label="Hora de Ingreso"
+                value={formatTimeAMPM(entry.entryTime)}
+              />
+
+              {entry.status === "exited" && (
+                <>
+                  <div className="flex justify-between text-sm py-1 border-b text-destructive font-bold">
+                    <span>Hora de Salida</span>
+                    <span>{entry.exitTime}</span>
+                  </div>
+
+                  <div className="flex justify-between text-sm py-1 border-b font-bold text-primary">
+                    <span>Total Pagado</span>
+                    <span>S/ {entry.totalToPay?.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {activeTab === "images" && (
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {/* BOTÓN AGREGAR */}
+          <input
+            type="file"
+            accept="image/*"
+            capture="environment"
+            hidden
+            id="camera-input"
+            onChange={async (e) => {
+              const file = e.target.files?.[0];
+              if (!file) return;
+
+              try {
+                setLoadingImage("uploading");
+
+                // 1️⃣ subir imagen
+                await uploadIngresoImage(String(entry.id), file);
+
+                // 2️⃣ volver a cargar desde BD
+                const imgs = await getIngresoImages(Number(entry.id));
+
+                onUpdate(entry.id, {
+                  images: imgs,
+                });
+              } catch (err) {
+                alert("Error subiendo imagen: " + err);
+                console.error(err);
+              } finally {
+                setLoadingImage(null);
+                e.target.value = "";
+              }
+            }}
+          />
+
+          <button
+            onClick={() => document.getElementById("camera-input")?.click()}
+            className="aspect-square rounded-md border-dashed border-2 flex flex-col items-center justify-center hover:bg-muted transition text-muted-foreground"
+          >
+            <Plus className="h-5 w-5" />
+            <span className="text-xs">Agregar</span>
+          </button>
+
+          {/* IMÁGENES */}
+          {entry.images.map((img, i) => (
+            <div
+              key={i}
+              className="relative aspect-square rounded-md overflow-hidden border cursor-pointer group"
+              onClick={() => setSelectedImage(img)}
+            >
+              {/* LOADER */}
+              {loadingImage === img && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 z-10">
+                  <div className="h-6 w-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  <span className="text-xs text-white mt-2">Cargando...</span>
+                </div>
+              )}
+
+              <img
+                src={img}
+                className="w-full h-full object-cover object-center"
+                onLoad={() => setLoadingImage(null)}
+                onError={() => setLoadingImage(null)}
+              />
+
+              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                <Maximize2 className="h-5 w-5 text-white" />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* DRIVER */}
+      {activeTab === "driver" && (
+        <Card className="border-none shadow-xl rounded-3xl">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="h-5 w-5 text-primary" />
+              Datos del Conductor
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {!isEditingDriver ? (
+              /* ====== MODO VISTA ====== */
+              <div className="space-y-6">
+                {" "}
+                {/* Contenedor principal con separación vertical */}
+                {/* Sección de Datos de Texto */}
+                <div className="grid grid-cols-1 gap-3">
+                  {/* DNI */}
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-[10px] uppercase font-bold text-muted-foreground">
+                      DNI
+                    </p>
+                    <p className="font-bold">{driverForm.dni}</p>
+                  </div>
+
+                  {/* Nombre Completo */}
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-[10px] uppercase font-bold text-muted-foreground">
+                      Nombre Completo
+                    </p>
+                    <p className="font-bold">{`${driverForm.name} ${driverForm.lastname}`}</p>
+                  </div>
+
+                  {/* Teléfono */}
+                  <div className="p-3 bg-muted rounded-lg">
+                    <p className="text-[10px] uppercase font-bold text-muted-foreground">
+                      Teléfono
+                    </p>
+                    <p className="font-bold">{driverForm.phone}</p>
+                  </div>
+                </div>
+                {/* Botón Actualizar */}
+                <Button
+                  variant="outline"
+                  className="w-full bg-primary border-2 h-12 text-white" // Ajustado para que combine con el estilo outline
+                  onClick={() => {
+                    setDriverOriginal(driverForm);
+
+                    setDriverForm({
+                      id_conductor: entry.driver?.id_conductor || 1,
+                      name: "",
+                      lastname: "",
+                      dni: "",
+                      phone: "",
+                    });
+
+                    setIsEditingDriver(true);
+                  }}
+                >
+                  <Pencil className="mr-2 h-4 w-4" />
+                  Actualizar datos
+                </Button>
+              </div>
+            ) : (
+              /* ====== MODO EDICIÓN ====== */
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field label="DNI">
+                    <div className="relative">
+                      <Input
+                        value={driverForm.dni}
+                        disabled={dniLocked}
+                        onChange={async (e) => {
+                          const value = e.target.value;
+
+                          setDriverForm({ ...driverForm, dni: value });
+
+                          // 🔓 Si borra DNI → desbloquear
+                          if (!value) {
+                            setDniLocked(false);
+                            setDniSuggestions([]);
+                            return;
+                          }
+
+                          // 🔍 Buscar sugerencias
+                          const results = await buscarConductoresPorDni(value);
+                          setDniSuggestions(results);
+                        }}
+                      />
+
+                      {/* 🔽 SUGERENCIAS */}
+                      {dniSuggestions.length > 0 && !dniLocked && (
+                        <div className="absolute z-20 mt-1 w-full bg-white border rounded-lg shadow-md">
+                          {dniSuggestions.map((c) => (
+                            <button
+                              key={c.id_conductor}
+                              type="button"
+                              className="w-full text-left px-3 py-2 hover:bg-muted text-sm"
+                              onClick={() => {
+                                setDriverForm({
+                                  id_conductor: c.id_conductor,
+                                  name: c.nombre,
+                                  lastname: c.apellidos,
+                                  dni: c.dni,
+                                  phone: c.telefono,
+                                });
+
+                                setDniLocked(true);
+                                setDniSuggestions([]);
+                              }}
+                            >
+                              <p className="font-bold">{c.dni}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {c.nombre} {c.apellidos}
+                              </p>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </Field>
+
+                  <Field label="Teléfono">
+                    <Input
+                      value={driverForm.phone}
+                      disabled={dniLocked}
+                      onChange={(e) =>
+                        setDriverForm({ ...driverForm, phone: e.target.value })
+                      }
+                    />
+                  </Field>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <Field label="Nombre">
+                    <Input
+                      value={driverForm.name}
+                      disabled={dniLocked}
+                      onChange={(e) =>
+                        setDriverForm({ ...driverForm, name: e.target.value })
+                      }
+                    />
+                  </Field>
+
+                  <Field label="Apellidos">
+                    <Input
+                      value={driverForm.lastname}
+                      disabled={dniLocked}
+                      onChange={(e) =>
+                        setDriverForm({
+                          ...driverForm,
+                          lastname: e.target.value,
+                        })
+                      }
+                    />
+                  </Field>
+                </div>
+
+                {/* IMÁGENES DEL DNI */}
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  hidden
+                  id="dni-front"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !driverForm.id_conductor) return;
+
+                    try {
+                      setLoadingDni(true);
+
+                      await uploadDniImage(
+                        String(driverForm.id_conductor),
+                        file,
+                      );
+
+                      const imgs = await getDniImages(
+                        entry.driver.id_conductor,
+                      );
+
+                      setDniImages(imgs);
+                    } catch (err) {
+                      alert("Error subiendo DNI");
+                      console.error(err);
+                    } finally {
+                      setLoadingDni(false);
+                      e.target.value = "";
+                    }
+                  }}
+                />
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  hidden
+                  id="dni-back"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file || !driverForm.id_conductor) return;
+
+                    try {
+                      setLoadingDni(true);
+
+                      await uploadDniImage(
+                        String(driverForm.id_conductor),
+                        file,
+                      );
+
+                      const imgs = await getDniImages(driverForm.id_conductor);
+
+                      setDniImages(imgs);
+                    } catch (err) {
+                      alert("Error subiendo DNI");
+                      console.error(err);
+                    } finally {
+                      setLoadingDni(false);
+                      e.target.value = "";
+                    }
+                  }}
+                />
+
+                <div className="space-y-4">
+                  <p className="text-xs font-bold text-muted-foreground uppercase">
+                    Fotos del DNI
+                  </p>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* DNI FRONTAL */}
+                    {dniImages[0] ? (
+                      <img
+                        src={dniImages[0]}
+                        className="rounded-lg border object-cover h-32 w-full"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          document.getElementById("dni-front")?.click()
+                        }
+                        className="border-dashed border-2 rounded-lg h-32 flex flex-col items-center justify-center text-muted-foreground"
+                      >
+                        <Plus className="h-5 w-5" />
+                        <span className="text-xs">DNI Frente</span>
+                      </button>
+                    )}
+
+                    {/* DNI POSTERIOR */}
+                    {dniImages[1] ? (
+                      <img
+                        src={dniImages[1]}
+                        className="rounded-lg border object-cover h-32 w-full"
+                      />
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          document.getElementById("dni-back")?.click()
+                        }
+                        className="border-dashed border-2 rounded-lg h-32 flex flex-col items-center justify-center text-muted-foreground"
+                      >
+                        <Plus className="h-5 w-5" />
+                        <span className="text-xs">DNI Reverso</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                <Button
+                  className="w-full bg-primary border-2 h-12 text-white"
+                  onClick={saveDriver}
+                >
+                  Guardar Conductor
+                </Button>
+
+                <Button
+                  variant="outline"
+                  className="w-full border-2 h-12"
+                  onClick={() => {
+                    setDriverForm(driverOriginal);
+                    setDniLocked(false);
+                    setDniSuggestions([]);
+                    setIsEditingDriver(false);
+                  }}
+                >
+                  Cancelar
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* IMAGE MODAL */}
+      <Dialog
+        open={!!selectedImage}
+        onOpenChange={() => setSelectedImage(null)}
+      >
+        <DialogContent className="p-0 border-none bg-black/90 hideClose={true}">
+          <button
+            className="absolute top-4 right-4 bg-white/20 rounded-full p-2"
+            onClick={() => setSelectedImage(null)}
+          >
+            <X className="h-6 w-6 text-white" />
+          </button>
+          {selectedImage && (
+            <img
+              src={selectedImage}
+              className="w-full max-h-[85vh] object-cover object-center"
+            />
+          )}
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}
+
+/* ===== COMPONENTES AUX ===== */
+
+function Field({
+  label,
+  children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-[10px] uppercase font-black text-muted-foreground">
+        {label}
+      </Label>
+      {children}
+    </div>
+  );
+}
+
+function DetailRow({
+  label,
+  value,
+  uppercase,
+  capitalize,
+}: {
+  label: string;
+  value: string;
+  uppercase?: boolean;
+  capitalize?: boolean;
+}) {
+  let displayValue = value || "-";
+  if (uppercase) displayValue = displayValue.toUpperCase();
+  if (capitalize)
+    displayValue =
+      displayValue.charAt(0).toUpperCase() +
+      displayValue.slice(1).toLowerCase();
+
+  return (
+    <div className="flex justify-between text-sm py-1 border-b">
+      <span className="font-bold text-muted-foreground">{label}</span>
+      <span className="font-bold">{displayValue}</span>
+    </div>
+  );
+}
+
+function formatTimeAMPM(time?: string) {
+  if (!time) return "-";
+
+  // Si viene ISO (2025-12-08T20:33:07.937Z)
+  if (time.includes("T")) {
+    const date = new Date(time);
+    return date.toLocaleTimeString("es-PE", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  }
+
+  // Si viene HH:mm
+  const [hour, minute] = time.split(":").map(Number);
+  const date = new Date();
+  date.setHours(hour, minute);
+
+  return date.toLocaleTimeString("es-PE", {
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  });
+}
+
+function formatDateDMY(date?: string) {
+  if (!date) return "-";
+
+  const d = new Date(date);
+
+  return d.toLocaleDateString("es-PE", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
