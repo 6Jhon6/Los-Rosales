@@ -405,7 +405,9 @@ export default function ParkingApp() {
                 payment={calculatePayment(selectedItem.entryTimestamp, {
                   horas: precioDB.horas,
                   diario: precioDB.diario,
-                })}
+                  shon_horas: precioDB.shon_horas,
+                  shon_diario: precioDB.shon_diario,
+                }, selectedItem.ownership)}
                 onConfirm={async (id) => {
                   try {
                     const payment = calculatePayment(
@@ -413,7 +415,10 @@ export default function ParkingApp() {
                       {
                         horas: precioDB.horas,
                         diario: precioDB.diario,
+                        shon_horas: precioDB.shon_horas,
+                        shon_diario: precioDB.shon_diario,
                       },
+                      selectedItem.ownership,
                     );
 
                     const playSuccessSound = () => {
@@ -435,7 +440,9 @@ export default function ParkingApp() {
                     await confirmExit(id, {
                       horas: precioDB.horas,
                       diario: precioDB.diario,
-                    });
+                      shon_horas: precioDB.shon_horas,
+                      shon_diario: precioDB.shon_diario,
+                    }, selectedItem.ownership);
 
                     playSuccessSound();
 

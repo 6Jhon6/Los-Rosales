@@ -10,7 +10,7 @@ import { getIngresos, type IngresoDB } from "@/services/ingresos.service";
 
 interface ExitsViewProps {
   onSelectExit: (entry: VehicleEntry) => void;
-  calculatePayment: (timestamp: number, type: any) => any;
+  calculatePayment: (timestamp: number, precio: any, ownership?: "particular" | "shon" | "abonado") => any;
 }
 
 export function ExitsView({ onSelectExit, calculatePayment }: ExitsViewProps) {
@@ -75,6 +75,7 @@ export function ExitsView({ onSelectExit, calculatePayment }: ExitsViewProps) {
             const payment = calculatePayment(
               entry.entryTimestamp,
               entry.precio,
+              entry.ownership
             );
 
             return (
@@ -137,7 +138,11 @@ function mapIngresoToEntry(i: IngresoDB): VehicleEntry {
     plate1: vehiculo?.placa_1 ?? "SIN PLACA",
     plate2: vehiculo?.placa_2 ?? "",
     type: precio?.tipo_vehiculo ?? "",
-    ownership: vehiculo?.empresa ?? "PARTICULAR",
+    ownership: vehiculo?.empresa === "SHON" 
+      ? "shon" 
+      : vehiculo?.empresa === "ABONADO" 
+        ? "abonado" 
+        : "particular",
 
     // ⬇️ FECHAS
     entryDate: i.fecha_inicio,
@@ -149,6 +154,8 @@ function mapIngresoToEntry(i: IngresoDB): VehicleEntry {
       ? {
           horas: precio.horas,
           diario: precio.diario,
+          shon_horas: precio.shon_horas,
+          shon_diario: precio.shon_diario,
         }
       : null,
 

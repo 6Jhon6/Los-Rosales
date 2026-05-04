@@ -270,10 +270,22 @@ export function RegistrationView({
             {loadingPrices ? (
               <p>Cargando tarifas...</p>
             ) : currentRate ? (
-              <div className="flex justify-between font-bold">
-                <span>Horas: S/ {currentRate.horas.toFixed(2)}</span>
-                <span>Día: S/ {currentRate.diario.toFixed(2)}</span>
-              </div>
+              formData.ownership === "shon" ? (
+                <div className="space-y-2">
+                  <p className="text-xs font-bold text-muted-foreground uppercase">
+                    Tarifa Empresa SHON
+                  </p>
+                  <div className="flex justify-between font-bold">
+                    <span>Horas: S/ {currentRate.shon_horas?.toFixed(2) ?? currentRate.horas.toFixed(2)}</span>
+                    <span>Día: S/ {currentRate.shon_diario?.toFixed(2) ?? currentRate.diario.toFixed(2)}</span>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex justify-between font-bold">
+                  <span>Horas: S/ {currentRate.horas.toFixed(2)}</span>
+                  <span>Día: S/ {currentRate.diario.toFixed(2)}</span>
+                </div>
+              )
             ) : (
               <p className="text-red-500">No hay tarifa</p>
             )}

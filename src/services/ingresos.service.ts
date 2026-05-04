@@ -13,6 +13,10 @@ export interface IngresoDB {
     precios:
       | {
           tipo_vehiculo: string;
+          horas: number;
+          diario: number;
+          shon_horas: number;
+          shon_diario: number;
         }[]
       | null;
   }[];
@@ -34,7 +38,9 @@ export async function getIngresos(): Promise<IngresoDB[]> {
       precios ( 
         tipo_vehiculo,
         horas,
-        diario
+        diario,
+        shon_horas,
+        shon_diario
        )
     ),
     conductores (

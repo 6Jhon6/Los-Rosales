@@ -10,6 +10,8 @@ import {
 export interface Precio {
   horas: number;
   diario: number;
+  shon_horas: number;
+  shon_diario: number;
 }
 
 export function useParking() {
@@ -67,10 +69,14 @@ export function useParking() {
     }
   };
 
-  /* =========================
-     CALCULAR PAGO (DINÁMICO)
-  ========================== */
-  const calculatePayment = (entryTimestamp: number, precio: Precio) => {
+/* =========================
+      CALCULAR PAGO (DINÁMICO)
+   ========================== */
+  const calculatePayment = (
+    entryTimestamp: number,
+    precio: Precio,
+    ownership?: "particular" | "shon" | "abonado",
+  ) => {
     const now = Date.now();
     const diffMs = now - entryTimestamp;
 
@@ -83,27 +89,25 @@ export function useParking() {
     const hours = Math.floor((diffMs % DAY) / HOUR);
     const minutes = Math.floor((diffMs % HOUR) / MINUTE);
 
-    /* =========================
-     CÁLCULO DE PAGO (igual que antes)
-  ========================== */
     const totalHours = Math.ceil(diffMs / HOUR);
     const diffDays = Math.floor(totalHours / 24);
     const remainingHours = totalHours % 24;
 
+    const isShon = ownership === "shon";
+    const horasPrice = isShon ? precio.shon_horas : precio.horas;
+    const diarioPrice = isShon ? precio.shon_diario : precio.diario;
+
     let total = 0;
 
     if (diffDays > 0) {
-      total += diffDays * precio.diario;
+      total += diffDays * diarioPrice;
       if (remainingHours > 0) {
-        total += precio.horas;
+        total += horasPrice;
       }
     } else {
-      total = precio.horas;
+      total = horasPrice;
     }
 
-    /* =========================
-     FORMATO DE TIEMPO
-  ========================== */
     const timeString = [
       days > 0 ? `${days}d` : null,
       hours > 0 ? `${hours}h` : null,
@@ -121,15 +125,19 @@ export function useParking() {
     };
   };
 
-  /* =========================
+/* =========================
      CONFIRMAR SALIDA
-  ========================== */
-  const confirmExit = (id: string, precio: Precio) => {
+   ========================== */
+  const confirmExit = (
+    id: string,
+    precio: Precio,
+    ownership?: "particular" | "shon" | "abonado",
+  ) => {
     const entry = entries.find((e) => e.id === id);
     if (!entry) return;
 
     const now = new Date();
-    const { total } = calculatePayment(entry.entryTimestamp, precio);
+    const { total } = calculatePayment(entry.entryTimestamp, precio, ownership);
 
     updateEntry(id, {
       status: "exited",
