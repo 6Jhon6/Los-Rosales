@@ -12,7 +12,7 @@ export type User = {
 
 
 export type Driver = {
-  id_conductor: number;
+  id_conductor?: number;
   dni: string;
   name: string;
   lastname: string;
@@ -22,19 +22,28 @@ export type Driver = {
 };
 
 export type VehicleEntry = {
-  exitId: any
-  precio: any
-  exitTime: ReactNode
-  driver: any
   id: string;
   plate1: string;
   plate2: string;
   ownership: "particular" | "shon" | "abonado";
-  type: string; // viene desde BD
+  type: string;
   entryTime: string;
   entryDate: string;
   entryTimestamp: number;
   images: string[];
   status: "active" | "exited";
+  exitId?: string;
+  precio?: Precio;
+  exitTime?: ReactNode;
+  exitTimestamp?: number;
+  driver?: Driver;
   totalToPay?: number;
+  vehicleImage?: string;
+};
+
+export type Precio = {
+  horas: number;
+  diario: number;
+  shon_horas: number;
+  shon_diario: number;
 };

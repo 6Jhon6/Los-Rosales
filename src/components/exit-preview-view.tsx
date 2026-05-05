@@ -31,6 +31,7 @@ export function ExitPreviewView({
   payment,
   onConfirm,
   onBack,
+  showToast: _showToast,
 }: ExitPreviewViewProps) {
   const [activeTab, setActiveTab] = useState<"detail" | "images">("detail");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);

@@ -9,17 +9,23 @@ import { Input } from "@/components/ui/input";
 import { getIngresos, type IngresoDB } from "@/services/ingresos.service";
 
 interface ExitsViewProps {
+  entries?: VehicleEntry[];
   onSelectExit: (entry: VehicleEntry) => void;
-  calculatePayment: (timestamp: number, precio: any, ownership?: "particular" | "shon" | "abonado") => any;
+  calculatePayment?: (timestamp: number, precio: any, ownership?: "particular" | "shon" | "abonado") => any;
 }
 
-export function ExitsView({ onSelectExit, calculatePayment }: ExitsViewProps) {
+export function ExitsView({ entries: externalEntries, onSelectExit, calculatePayment }: ExitsViewProps) {
   const [entries, setEntries] = useState<VehicleEntry[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
   // 🔥 TRAER INGRESOS
   useEffect(() => {
+    if (externalEntries) {
+      setLoading(false);
+      return;
+    }
+
     const fetchIngresos = async () => {
       try {
         const data = await getIngresos();
@@ -36,14 +42,15 @@ export function ExitsView({ onSelectExit, calculatePayment }: ExitsViewProps) {
   }, []);
 
   // 🔍 FILTRO
+  const displayEntries = externalEntries || entries;
   const filtered = useMemo(() => {
-    return entries.filter((e) => {
+    return displayEntries.filter((e) => {
       return (
         e.status === "active" &&
         e.plate1.toLowerCase().includes(search.toLowerCase())
       );
     });
-  }, [entries, search]);
+  }, [displayEntries, search]);
 
   return (
     <div className="space-y-4">
@@ -60,7 +67,7 @@ export function ExitsView({ onSelectExit, calculatePayment }: ExitsViewProps) {
 
       {/* LISTA */}
       <div className="grid gap-3">
-        {loading ? (
+        {loading || externalEntries === undefined ? (
           <p className="text-center text-muted-foreground py-10">
             Cargando vehículos...
           </p>
@@ -70,7 +77,7 @@ export function ExitsView({ onSelectExit, calculatePayment }: ExitsViewProps) {
           </p>
         ) : (
           filtered.map((entry) => {
-            if (!entry.precio) return null;
+            if (!entry.precio || !calculatePayment) return null;
 
             const payment = calculatePayment(
               entry.entryTimestamp,
@@ -129,9 +136,9 @@ export function ExitsView({ onSelectExit, calculatePayment }: ExitsViewProps) {
 }
 
 function mapIngresoToEntry(i: IngresoDB): VehicleEntry {
-  const vehiculo = i.vehiculos;
+  const vehiculo = i.vehiculos && i.vehiculos[0];
   const conductor = i.conductores;
-  const precio = vehiculo?.precios;
+  const precio = vehiculo?.precios?.[0];
 
   return {
     id: i.id_ingreso.toString(),
@@ -157,9 +164,9 @@ function mapIngresoToEntry(i: IngresoDB): VehicleEntry {
           shon_horas: precio.shon_horas,
           shon_diario: precio.shon_diario,
         }
-      : null,
+      : undefined,
 
-    exitTime: null,
+    exitTime: undefined,
     status: "active",
     images: [],
 
@@ -172,6 +179,6 @@ function mapIngresoToEntry(i: IngresoDB): VehicleEntry {
           dniFront: "",
           dniBack: "",
         }
-      : null,
+      : undefined,
   };
 }

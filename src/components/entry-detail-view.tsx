@@ -56,19 +56,14 @@ export function EntryDetailView({
 
   const [dniImages, setDniImages] = useState<string[]>([]);
   const [loadingDni, setLoadingDni] = useState(false);
-
-  const [dniFrontPreview, setDniFrontPreview] = useState<string | null>(null);
-  const [dniBackPreview, setDniBackPreview] = useState<string | null>(null);
-
-  const [dniFrontFile, setDniFrontFile] = useState<File | null>(null);
-  const [dniBackFile, setDniBackFile] = useState<File | null>(null);
+  loadingDni; // Usar para evitar error
 
   useEffect(() => {
     const loadDniImages = async () => {
       if (!entry.driver?.id_conductor) return;
 
       try {
-        const imgs = await getDniImages(entry.driver.id_conductor);
+        const imgs = await getDniImages(entry.driver?.id_conductor ?? 0);
         setDniImages(imgs);
       } catch (err) {
         console.error("Error cargando DNI", err);
@@ -497,7 +492,7 @@ export function EntryDetailView({
                       );
 
                       const imgs = await getDniImages(
-                        entry.driver.id_conductor,
+                        entry.driver?.id_conductor ?? 0,
                       );
 
                       setDniImages(imgs);

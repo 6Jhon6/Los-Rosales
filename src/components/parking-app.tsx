@@ -94,7 +94,7 @@ export default function ParkingApp() {
     revenueHoy: 0,
   });
 
-  const [activities, setActivities] = useState([]);
+  const [activities, setActivities] = useState<any[]>([]);
 
   useEffect(() => {
     if (view !== "stats") return;
@@ -453,12 +453,7 @@ export default function ParkingApp() {
                   }
                 }}
                 onBack={() => setView("exits")}
-                showToast={function (
-                  msg: string,
-                  type?: "success" | "error",
-                ): void {
-                  throw new Error("Function not implemented.");
-                }}
+                showToast={showToast}
               />
             );
           })()}
@@ -489,11 +484,4 @@ export default function ParkingApp() {
       </main>
     </div>
   );
-}
-function boardStats(arg0: {
-  ingresosHoy: number;
-  salidasHoy: number;
-  revenueHoy: number;
-}) {
-  throw new Error("Function not implemented.");
 }
