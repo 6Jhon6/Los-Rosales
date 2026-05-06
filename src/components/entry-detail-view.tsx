@@ -63,6 +63,19 @@ export function EntryDetailView({
       if (!entry.driver?.id_conductor) return;
 
       if (entry.driver.id_conductor === 1) {
+        setDriverForm({
+          id_conductor: 1,
+          name: "",
+          lastname: "",
+          dni: "",
+          phone: "",
+          dniFront: "",
+          dniBack: "",
+        });
+        setDniFrontPreview(null);
+        setDniBackPreview(null);
+        setDniLocked(false);
+        setDniSuggestions([]);
         setIsEditingDriver(true);
         return;
       }
@@ -512,35 +525,47 @@ export function EntryDetailView({
 
                           setDriverForm({ ...driverForm, dni: value });
 
-                          // 🔓 Si borra DNI → desbloquear
                           if (!value) {
                             setDniLocked(false);
                             setDniSuggestions([]);
                             return;
                           }
 
-                          // 🔍 Buscar sugerencias
-                          const results = await buscarConductoresPorDni(value);
-                          setDniSuggestions(results);
+                          if (value.length >= 3) {
+                            const results = await buscarConductoresPorDni(value);
+                            setDniSuggestions(results);
+                          } else {
+                            setDniSuggestions([]);
+                          }
                         }}
                       />
 
-                      {/* 🔽 SUGERENCIAS */}
                       {dniSuggestions.length > 0 && !dniLocked && (
-                        <div className="absolute z-20 mt-1 w-full bg-white border rounded-lg shadow-md">
+                        <div className="absolute z-20 mt-1 w-full bg-white border rounded-lg shadow-md max-h-40 overflow-y-auto">
                           {dniSuggestions.map((c) => (
                             <button
                               key={c.id_conductor}
                               type="button"
-                              className="w-full text-left px-3 py-2 hover:bg-muted text-sm"
-                              onClick={() => {
+                              className="w-full text-left px-3 py-2 hover:bg-muted text-sm border-b last:border-b-0"
+                              onClick={async () => {
+                                const conductorCompleto = await getConductorPorId(c.id_conductor);
+                                
                                 setDriverForm({
                                   id_conductor: c.id_conductor,
-                                  name: c.nombre,
-                                  lastname: c.apellidos,
+                                  name: conductorCompleto?.nombre || c.nombre,
+                                  lastname: conductorCompleto?.apellidos || c.apellidos,
                                   dni: c.dni,
-                                  phone: c.telefono,
+                                  phone: conductorCompleto?.telefono || c.telefono,
+                                  dniFront: conductorCompleto?.ruta_anverso || "",
+                                  dniBack: conductorCompleto?.ruta_reverso || "",
                                 });
+
+                                if (conductorCompleto?.ruta_anverso) {
+                                  setDniFrontPreview(conductorCompleto.ruta_anverso);
+                                }
+                                if (conductorCompleto?.ruta_reverso) {
+                                  setDniBackPreview(conductorCompleto.ruta_reverso);
+                                }
 
                                 setDniLocked(true);
                                 setDniSuggestions([]);
@@ -637,14 +662,18 @@ export function EntryDetailView({
                   <div className="grid grid-cols-2 gap-3">
                     {/* DNI FRONTAL */}
                     {dniFrontPreview ? (
-                      <div className="relative rounded-lg border h-32 overflow-hidden group">
+                      <div 
+                        className="relative rounded-lg border h-32 overflow-hidden group cursor-pointer"
+                        onClick={() => setSelectedImage(dniFrontPreview)}
+                      >
                         <img
                           src={dniFrontPreview}
                           className="w-full h-full object-cover"
                         />
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setDniFrontPreview(null);
                             setDriverForm({ ...driverForm, dniFront: "" });
                           }}
@@ -668,14 +697,18 @@ export function EntryDetailView({
 
                     {/* DNI POSTERIOR */}
                     {dniBackPreview ? (
-                      <div className="relative rounded-lg border h-32 overflow-hidden group">
+                      <div 
+                        className="relative rounded-lg border h-32 overflow-hidden group cursor-pointer"
+                        onClick={() => setSelectedImage(dniBackPreview)}
+                      >
                         <img
                           src={dniBackPreview}
                           className="w-full h-full object-cover"
                         />
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setDniBackPreview(null);
                             setDriverForm({ ...driverForm, dniBack: "" });
                           }}
