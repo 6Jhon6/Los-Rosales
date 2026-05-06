@@ -1,11 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   type VehicleEntry,
   type VehicleType,
   type Driver,
 } from "@/types/parking";
+import { getIngresos, type IngresoDB } from "@/services/ingresos.service";
 
 export interface Precio {
   horas: number;
@@ -14,9 +15,56 @@ export interface Precio {
   shon_diario: number;
 }
 
+function mapIngresoToEntry(i: IngresoDB): VehicleEntry {
+  const vehiculo = i.vehiculos && i.vehiculos[0];
+  const conductor = i.conductores;
+
+  return {
+    id: i.id_ingreso.toString(),
+    plate1: vehiculo?.placa_1 ?? "NO ENCONTRADO",
+    plate2: vehiculo?.placa_2 ?? "",
+    type: vehiculo?.precios?.[0]?.tipo_vehiculo ?? "",
+    ownership: (vehiculo?.empresa?.toLowerCase() as "particular" | "shon" | "abonado") ?? "particular",
+    entryDate: i.fecha_inicio,
+    entryTime: i.hora_inicio,
+    entryTimestamp: new Date(i.fecha_inicio).getTime(),
+    exitTime: undefined,
+    status: "active",
+    images: [],
+    driver: conductor && i.id_conductor
+      ? {
+          id_conductor: i.id_conductor,
+          name: conductor.nombre,
+          lastname: conductor.apellidos,
+          dni: conductor.dni,
+          phone: conductor.telefono,
+          dniFront: "",
+          dniBack: "",
+        }
+      : undefined,
+  };
+}
+
 export function useParking() {
   const [entries, setEntries] = useState<VehicleEntry[]>([]);
+  const [loading, setLoading] = useState(true);
   const [currentEntry, setCurrentEntry] = useState<VehicleEntry | null>(null);
+
+  useEffect(() => {
+    const loadEntries = async () => {
+      try {
+        const data = await getIngresos();
+        const mappedEntries = data.map(mapIngresoToEntry);
+        setEntries(mappedEntries);
+      } catch (err) {
+        console.error("Error cargando ingresos:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadEntries();
+  }, []);
 
   /* =========================
      REGISTRAR INGRESO
@@ -170,6 +218,7 @@ export function useParking() {
 
   return {
     entries,
+    loading,
     currentEntry,
     setCurrentEntry,
     registerEntry,

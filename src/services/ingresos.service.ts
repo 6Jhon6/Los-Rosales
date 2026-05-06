@@ -4,6 +4,7 @@ import { supabase } from "./supabaseClient";
 export interface IngresoDB {
   conductores: any;
   id_ingreso: number;
+  id_conductor: number | null;
   fecha_inicio: string;
   hora_inicio: string;
   vehiculos: {
@@ -28,9 +29,9 @@ export async function getIngresos(): Promise<IngresoDB[]> {
     .select(
       `
     id_ingreso,
+    id_conductor,
     fecha_inicio,
     hora_inicio,
-    id_conductor,
     vehiculos (
       placa_1,
       placa_2,

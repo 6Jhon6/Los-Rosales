@@ -174,3 +174,31 @@ export async function getDniImages(
 
   return data?.map((img) => img.ruta) ?? [];
 }
+
+export async function uploadDniImageFromBase64(
+  conductorId: string,
+  base64Data: string,
+  tipo: "anverso" | "reverso",
+): Promise<string> {
+  const base64Response = await fetch(base64Data);
+  const blob = await base64Response.blob();
+  const file = new File([blob], `${tipo}_dni.jpg`, { type: "image/jpeg" });
+
+  const compressed = await compressImage(file);
+
+  const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.jpg`;
+  const path = `${conductorId}/${tipo}-${fileName}`;
+
+  const { error: uploadError } = await supabase.storage
+    .from("img_dnis")
+    .upload(path, compressed, {
+      contentType: "image/jpeg",
+      upsert: false,
+    });
+
+  if (uploadError) throw uploadError;
+
+  const { data } = supabase.storage.from("img_dnis").getPublicUrl(path);
+
+  return data.publicUrl;
+}

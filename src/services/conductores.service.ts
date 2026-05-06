@@ -96,3 +96,20 @@ export async function buscarConductoresPorDni(
 
   return data ?? [];
 }
+
+export async function getConductorPorId(
+  idConductor: number,
+): Promise<ConductorDB | null> {
+  const { data, error } = await supabase
+    .from("conductores")
+    .select("id_conductor, nombre, apellidos, dni, telefono, ruta_anverso, ruta_reverso")
+    .eq("id_conductor", idConductor)
+    .maybeSingle();
+
+  if (error) {
+    console.error("Error obteniendo conductor:", error);
+    return null;
+  }
+
+  return data;
+}
