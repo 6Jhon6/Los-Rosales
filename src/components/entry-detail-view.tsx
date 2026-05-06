@@ -11,14 +11,15 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   crearOActualizarConductor,
   buscarConductoresPorDni,
+  getConductorPorId,
   type ConductorDB,
 } from "@/services/conductores.service";
 import { actualizarConductorEnIngreso } from "@/services/ingresos.service";
+import { supabase } from "@/services/supabaseClient";
 import {
   uploadIngresoImage,
   getIngresoImages,
-  uploadDniImage,
-  getDniImages,
+  uploadDniImageFromBase64,
 } from "@/services/images.service";
 
 interface EntryDetailViewProps {
@@ -54,29 +55,57 @@ export function EntryDetailView({
   const [dniSuggestions, setDniSuggestions] = useState<ConductorDB[]>([]);
   const [dniLocked, setDniLocked] = useState(false);
 
-  const [dniImages, setDniImages] = useState<string[]>([]);
-  const [loadingDni, setLoadingDni] = useState(false);
-  loadingDni; // Usar para evitar error
+  const [dniFrontPreview, setDniFrontPreview] = useState<string | null>(null);
+  const [dniBackPreview, setDniBackPreview] = useState<string | null>(null);
 
   useEffect(() => {
-    const loadDniImages = async () => {
+    const loadDriverData = async () => {
       if (!entry.driver?.id_conductor) return;
 
+      if (entry.driver.id_conductor === 1) {
+        setIsEditingDriver(true);
+        return;
+      }
+
       try {
-        const imgs = await getDniImages(entry.driver?.id_conductor ?? 0);
-        setDniImages(imgs);
+        const conductor = await getConductorPorId(entry.driver.id_conductor);
+        if (conductor) {
+          setDriverForm({
+            id_conductor: conductor.id_conductor,
+            name: conductor.nombre,
+            lastname: conductor.apellidos,
+            dni: conductor.dni,
+            phone: conductor.telefono,
+            dniFront: conductor.ruta_anverso || "",
+            dniBack: conductor.ruta_reverso || "",
+          });
+
+          if (conductor.ruta_anverso) {
+            setDniFrontPreview(conductor.ruta_anverso);
+          }
+          if (conductor.ruta_reverso) {
+            setDniBackPreview(conductor.ruta_reverso);
+          }
+
+          setIsEditingDriver(false);
+        }
       } catch (err) {
-        console.error("Error cargando DNI", err);
+        console.error("Error cargando datos del conductor", err);
       }
     };
 
-    loadDniImages();
-  }, [entry.driver]);
+    loadDriverData();
+  }, [entry.driver?.id_conductor]);
 
   const [driverOriginal, setDriverOriginal] = useState(driverForm);
 
   const saveDriver = async () => {
     try {
+      if (!driverForm.dni || !driverForm.name || !driverForm.lastname || !driverForm.phone) {
+        alert("Por favor complete todos los campos requeridos");
+        return;
+      }
+
       const normalizedData = {
         nombre: driverForm.name?.trim().toUpperCase(),
         apellidos: driverForm.lastname?.trim().toUpperCase(),
@@ -84,22 +113,56 @@ export function EntryDetailView({
         telefono: driverForm.phone?.trim().toUpperCase(),
       };
 
-      // 1️⃣ guardar conductor
-      const idConductor = await crearOActualizarConductor(normalizedData);
+      const idConductor = await crearOActualizarConductor({
+        ...normalizedData,
+        ruta_anverso: undefined,
+        ruta_reverso: undefined,
+      });
 
-      // 2️⃣ asociar ingreso
+      let rutaAnverso: string | null = null;
+      let rutaReverso: string | null = null;
+
+      if (dniFrontPreview && dniFrontPreview.startsWith("data:")) {
+        rutaAnverso = await uploadDniImageFromBase64(
+          String(idConductor),
+          dniFrontPreview,
+          "anverso",
+        );
+      }
+      if (dniBackPreview && dniBackPreview.startsWith("data:")) {
+        rutaReverso = await uploadDniImageFromBase64(
+          String(idConductor),
+          dniBackPreview,
+          "reverso",
+        );
+      }
+
+      if (rutaAnverso || rutaReverso) {
+        await supabase
+          .from("conductores")
+          .update({
+            ruta_anverso: rutaAnverso,
+            ruta_reverso: rutaReverso,
+          })
+          .eq("id_conductor", idConductor);
+      }
+
       await actualizarConductorEnIngreso(Number(entry.id), idConductor);
 
-      // 3️⃣ crear driver final
       const normalizedDriver = {
         id_conductor: idConductor,
         name: normalizedData.nombre,
         lastname: normalizedData.apellidos,
         dni: normalizedData.dni,
         phone: normalizedData.telefono,
+        dniFront: rutaAnverso || "",
+        dniBack: rutaReverso || "",
       };
 
       setDriverForm(normalizedDriver);
+
+      setDniFrontPreview(rutaAnverso);
+      setDniBackPreview(rutaReverso);
 
       onUpdate(entry.id, {
         driver: normalizedDriver,
@@ -114,6 +177,8 @@ export function EntryDetailView({
 
   useEffect(() => {
     const loadImages = async () => {
+      if (!entry.id || isNaN(Number(entry.id))) return;
+      
       try {
         const imgs = await getIngresoImages(Number(entry.id));
 
@@ -355,20 +420,76 @@ export function EntryDetailView({
                     <p className="font-bold">{driverForm.phone}</p>
                   </div>
                 </div>
+
+                {/* Fotos del DNI */}
+                {(driverForm.dniFront || driverForm.dniBack) && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] uppercase font-bold text-muted-foreground">
+                      Fotos del DNI
+                    </p>
+                    <div className="grid grid-cols-2 gap-3">
+                      {driverForm.dniFront && (
+                        <div
+                          className="rounded-lg border overflow-hidden cursor-pointer"
+                          onClick={() => setSelectedImage(driverForm.dniFront || null)}
+                        >
+                          <img
+                            src={driverForm.dniFront}
+                            className="w-full h-32 object-cover"
+                            alt="DNI Frente"
+                          />
+                        </div>
+                      )}
+                      {driverForm.dniBack && (
+                        <div
+                          className="rounded-lg border overflow-hidden cursor-pointer"
+                          onClick={() => setSelectedImage(driverForm.dniBack || null)}
+                        >
+                          <img
+                            src={driverForm.dniBack}
+                            className="w-full h-32 object-cover"
+                            alt="DNI Reverso"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
                 {/* Botón Actualizar */}
                 <Button
                   variant="outline"
-                  className="w-full bg-primary border-2 h-12 text-white" // Ajustado para que combine con el estilo outline
-                  onClick={() => {
+                  className="w-full bg-primary border-2 h-12 text-white"
+                  onClick={async () => {
                     setDriverOriginal(driverForm);
 
-                    setDriverForm({
-                      id_conductor: entry.driver?.id_conductor || 1,
-                      name: "",
-                      lastname: "",
-                      dni: "",
-                      phone: "",
-                    });
+                    if (entry.driver?.id_conductor && entry.driver.id_conductor !== 1) {
+                      const conductor = await getConductorPorId(entry.driver.id_conductor);
+                      if (conductor) {
+                        setDriverForm({
+                          id_conductor: conductor.id_conductor,
+                          name: conductor.nombre,
+                          lastname: conductor.apellidos,
+                          dni: conductor.dni,
+                          phone: conductor.telefono,
+                          dniFront: conductor.ruta_anverso || "",
+                          dniBack: conductor.ruta_reverso || "",
+                        });
+                        setDniFrontPreview(conductor.ruta_anverso || null);
+                        setDniBackPreview(conductor.ruta_reverso || null);
+                      }
+                    } else {
+                      setDriverForm({
+                        id_conductor: entry.driver?.id_conductor || 1,
+                        name: "",
+                        lastname: "",
+                        dni: "",
+                        phone: "",
+                        dniFront: "",
+                        dniBack: "",
+                      });
+                      setDniFrontPreview(null);
+                      setDniBackPreview(null);
+                    }
 
                     setIsEditingDriver(true);
                   }}
@@ -481,28 +602,13 @@ export function EntryDetailView({
                   id="dni-front"
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
-                    if (!file || !driverForm.id_conductor) return;
+                    if (!file) return;
 
-                    try {
-                      setLoadingDni(true);
-
-                      await uploadDniImage(
-                        String(driverForm.id_conductor),
-                        file,
-                      );
-
-                      const imgs = await getDniImages(
-                        entry.driver?.id_conductor ?? 0,
-                      );
-
-                      setDniImages(imgs);
-                    } catch (err) {
-                      alert("Error subiendo DNI");
-                      console.error(err);
-                    } finally {
-                      setLoadingDni(false);
-                      e.target.value = "";
-                    }
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      setDniFrontPreview(event.target?.result as string);
+                    };
+                    reader.readAsDataURL(file);
                   }}
                 />
                 <input
@@ -513,48 +619,47 @@ export function EntryDetailView({
                   id="dni-back"
                   onChange={async (e) => {
                     const file = e.target.files?.[0];
-                    if (!file || !driverForm.id_conductor) return;
+                    if (!file) return;
 
-                    try {
-                      setLoadingDni(true);
-
-                      await uploadDniImage(
-                        String(driverForm.id_conductor),
-                        file,
-                      );
-
-                      const imgs = await getDniImages(driverForm.id_conductor);
-
-                      setDniImages(imgs);
-                    } catch (err) {
-                      alert("Error subiendo DNI");
-                      console.error(err);
-                    } finally {
-                      setLoadingDni(false);
-                      e.target.value = "";
-                    }
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                      setDniBackPreview(event.target?.result as string);
+                    };
+                    reader.readAsDataURL(file);
                   }}
                 />
 
                 <div className="space-y-4">
                   <p className="text-xs font-bold text-muted-foreground uppercase">
-                    Fotos del DNI
+                    Fotos del DNI (Opcional)
                   </p>
 
                   <div className="grid grid-cols-2 gap-3">
                     {/* DNI FRONTAL */}
-                    {dniImages[0] ? (
-                      <img
-                        src={dniImages[0]}
-                        className="rounded-lg border object-cover h-32 w-full"
-                      />
+                    {dniFrontPreview ? (
+                      <div className="relative rounded-lg border h-32 overflow-hidden group">
+                        <img
+                          src={dniFrontPreview}
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDniFrontPreview(null);
+                            setDriverForm({ ...driverForm, dniFront: "" });
+                          }}
+                          className="absolute top-1 right-1 bg-destructive text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
                     ) : (
                       <button
                         type="button"
                         onClick={() =>
                           document.getElementById("dni-front")?.click()
                         }
-                        className="border-dashed border-2 rounded-lg h-32 flex flex-col items-center justify-center text-muted-foreground"
+                        className="border-dashed border-2 rounded-lg h-32 flex flex-col items-center justify-center text-muted-foreground hover:bg-muted transition"
                       >
                         <Plus className="h-5 w-5" />
                         <span className="text-xs">DNI Frente</span>
@@ -562,18 +667,30 @@ export function EntryDetailView({
                     )}
 
                     {/* DNI POSTERIOR */}
-                    {dniImages[1] ? (
-                      <img
-                        src={dniImages[1]}
-                        className="rounded-lg border object-cover h-32 w-full"
-                      />
+                    {dniBackPreview ? (
+                      <div className="relative rounded-lg border h-32 overflow-hidden group">
+                        <img
+                          src={dniBackPreview}
+                          className="w-full h-full object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDniBackPreview(null);
+                            setDriverForm({ ...driverForm, dniBack: "" });
+                          }}
+                          className="absolute top-1 right-1 bg-destructive text-white rounded-full p-1 opacity-0 group-hover:opacity-100 transition"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
                     ) : (
                       <button
                         type="button"
                         onClick={() =>
                           document.getElementById("dni-back")?.click()
                         }
-                        className="border-dashed border-2 rounded-lg h-32 flex flex-col items-center justify-center text-muted-foreground"
+                        className="border-dashed border-2 rounded-lg h-32 flex flex-col items-center justify-center text-muted-foreground hover:bg-muted transition"
                       >
                         <Plus className="h-5 w-5" />
                         <span className="text-xs">DNI Reverso</span>
