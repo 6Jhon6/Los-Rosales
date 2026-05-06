@@ -16,7 +16,8 @@ export interface Precio {
 }
 
 function mapIngresoToEntry(i: IngresoDB): VehicleEntry {
-  const vehiculo = i.vehiculos && i.vehiculos[0];
+  const vehiculosData = i.vehiculos;
+  const vehiculo = Array.isArray(vehiculosData) ? vehiculosData[0] : vehiculosData;
   const conductor = i.conductores;
 
   return {
@@ -54,7 +55,9 @@ export function useParking() {
     const loadEntries = async () => {
       try {
         const data = await getIngresos();
+        console.log("Datos recibidos de ingresos:", JSON.stringify(data, null, 2));
         const mappedEntries = data.map(mapIngresoToEntry);
+        console.log("Entries mapeados:", JSON.stringify(mappedEntries, null, 2));
         setEntries(mappedEntries);
       } catch (err) {
         console.error("Error cargando ingresos:", err);
