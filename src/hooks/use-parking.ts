@@ -15,19 +15,39 @@ export interface Precio {
   shon_diario: number;
 }
 
+function formatDate(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleDateString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
+}
+
+function formatTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  return date.toLocaleTimeString("es-ES", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function mapIngresoToEntry(i: IngresoDB): VehicleEntry {
   const vehiculosData = i.vehiculos;
   const vehiculo = Array.isArray(vehiculosData) ? vehiculosData[0] : vehiculosData;
   const conductor = i.conductores;
 
+  const preciosData = vehiculo?.precios;
+  const precios = Array.isArray(preciosData) ? preciosData[0] : preciosData;
+
   return {
     id: i.id_ingreso.toString(),
     plate1: vehiculo?.placa_1 ?? "NO ENCONTRADO",
     plate2: vehiculo?.placa_2 ?? "",
-    type: vehiculo?.precios?.[0]?.tipo_vehiculo ?? "",
+    type: precios?.tipo_vehiculo ?? "",
     ownership: (vehiculo?.empresa?.toLowerCase() as "particular" | "shon" | "abonado") ?? "particular",
-    entryDate: i.fecha_inicio,
-    entryTime: i.hora_inicio,
+    entryDate: formatDate(i.fecha_inicio),
+    entryTime: formatTime(i.fecha_inicio),
     entryTimestamp: new Date(i.fecha_inicio).getTime(),
     exitTime: undefined,
     status: "active",
@@ -55,9 +75,7 @@ export function useParking() {
     const loadEntries = async () => {
       try {
         const data = await getIngresos();
-        console.log("Datos recibidos de ingresos:", JSON.stringify(data, null, 2));
         const mappedEntries = data.map(mapIngresoToEntry);
-        console.log("Entries mapeados:", JSON.stringify(mappedEntries, null, 2));
         setEntries(mappedEntries);
       } catch (err) {
         console.error("Error cargando ingresos:", err);
@@ -73,6 +91,7 @@ export function useParking() {
      REGISTRAR INGRESO
   ========================== */
   const registerEntry = (data: {
+    id?: string;
     plate1: string;
     plate2: string;
     ownership: "particular" | "shon" | "abonado";
@@ -84,7 +103,7 @@ export function useParking() {
     const now = new Date();
 
     const newEntry: VehicleEntry = {
-      id: `PK-${Math.floor(1000 + Math.random() * 9000)}`,
+      id: data.id || `PK-${Math.floor(1000 + Math.random() * 9000)}`,
       plate1: data.plate1,
       plate2: data.plate2,
       ownership: data.ownership,

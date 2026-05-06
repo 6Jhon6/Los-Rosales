@@ -137,7 +137,7 @@ export function RegistrationView({
         return;
       }
 
-      await registrarVehiculoYIngreso({
+      const idIngreso = await registrarVehiculoYIngreso({
         placa_1: formData.plate1,
         placa_2: formData.plate2 || null,
         empresa:
@@ -152,6 +152,7 @@ export function RegistrationView({
       onRegister({
         ...formData,
         images: [],
+        id: idIngreso.toString(),
       });
     } catch (error) {
       console.error(error);
