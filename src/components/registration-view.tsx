@@ -32,8 +32,8 @@ export function RegistrationView({
   onCancel,
 }: RegistrationViewProps) {
   /* =========================
-     ESTADOS
-  ========================= */
+      ESTADOS
+   ========================= */
   const [precios, setPrecios] = useState<PrecioDB[]>([]);
   const [loadingPrices, setLoadingPrices] = useState(true);
 
@@ -48,6 +48,18 @@ export function RegistrationView({
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
 
   const [vehiculoSeleccionado, setVehiculoSeleccionado] = useState(false);
+
+  const resetForm = () => {
+    setFormData({
+      plate1: "",
+      plate2: "",
+      ownership: "particular",
+      type: precios[0]?.tipo_vehiculo || "",
+    });
+    setVehiculoSeleccionado(false);
+    setSugerencias([]);
+    setMostrarSugerencias(false);
+  };
 
   /* =========================
      CARGAR PRECIOS
@@ -184,14 +196,17 @@ export function RegistrationView({
                 onChange={(e) => {
                   const value = e.target.value.toUpperCase();
 
+                  if (value === "") {
+                    resetForm();
+                    return;
+                  }
+
                   setFormData({
                     ...formData,
                     plate1: value,
                   });
 
-                  if (value === "") {
-                    setVehiculoSeleccionado(false);
-                  }
+                  setVehiculoSeleccionado(false);
                 }}
               />
 
@@ -298,13 +313,6 @@ export function RegistrationView({
             )}
           </div>
 
-          {/* ICONO */}
-          {formData.type.toLowerCase().includes("auto") ? (
-            <Car className="mx-auto text-primary/40" />
-          ) : (
-            <Truck className="mx-auto text-primary/40" />
-          )}
-
           {/* BOTONES */}
           <Button
             className="w-full text-lg"
@@ -314,9 +322,11 @@ export function RegistrationView({
             Confirmar Ingreso <FileText className="ml-2" />
           </Button>
 
-          <Button variant="ghost" onClick={onCancel}>
-            Cancelar
-          </Button>
+          <div className="flex justify-center">
+            <Button variant="ghost" onClick={onCancel}>
+              Cancelar
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

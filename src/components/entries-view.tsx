@@ -109,7 +109,7 @@ export function EntriesView({ entries: externalEntries, onSelectEntry }: Entries
               <CardContent className="p-4 space-y-2">
                 <div className="flex justify-between items-center">
                   <h3 className="font-black text-lg">
-                    Ingreso #{item.id}
+                    Ingreso de Vehiculo #{item.id}
                   </h3>
                   <Badge className="bg-primary/10 text-primary border-none">
                     Activo
