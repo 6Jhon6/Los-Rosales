@@ -79,7 +79,7 @@ export function EntriesView({ entries: externalEntries, onSelectEntry }: Entries
       <div className="flex items-center gap-3 bg-card p-3 rounded-2xl shadow-sm border">
         <Search className="h-5 w-5 text-muted-foreground" />
         <Input
-          placeholder="Buscar por placa..."
+          placeholder="Buscar por placa o #ticket..."
           className="border-none shadow-none focus-visible:ring-0 p-0 h-8"
           value={search}
           onChange={(e) => setSearch(e.target.value.toUpperCase())}

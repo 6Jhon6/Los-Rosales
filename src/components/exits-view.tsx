@@ -3,8 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { VehicleEntry } from "@/types/parking";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Search, LogOut, ChevronRight } from "lucide-react";
+import { Search, LogOut, ChevronRight, Ticket, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getIngresos, type IngresoDB } from "@/services/ingresos.service";
 
@@ -18,6 +17,7 @@ export function ExitsView({ entries: externalEntries, onSelectExit, calculatePay
   const [entries, setEntries] = useState<VehicleEntry[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (externalEntries !== undefined) {
@@ -61,11 +61,11 @@ export function ExitsView({ entries: externalEntries, onSelectExit, calculatePay
       {/* BUSCADOR */}
       <div className="flex items-center gap-3 bg-card p-3 rounded-2xl shadow-sm border">
         <Search className="h-5 w-5 text-muted-foreground" />
-        <Input
-          placeholder="Placa para dar salida..."
+          <Input
+          placeholder="Buscar por placa o #ticket..."
           className="border-none shadow-none focus-visible:ring-0 p-0 h-8"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => setSearch(e.target.value.toUpperCase())}
         />
       </div>
 
@@ -80,59 +80,80 @@ export function ExitsView({ entries: externalEntries, onSelectExit, calculatePay
             No hay vehículos activos
           </p>
         ) : (
-          filtered.map((entry) => {
-            if (!entry.precio || !calculatePayment) return null;
+          <>
+            {errorMessage && (
+              <div className="bg-red-500/20 text-red-700 border border-red-500/30 rounded-lg p-3 text-center font-bold text-sm flex items-center justify-center gap-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                <AlertCircle className="h-4 w-4" />
+                {errorMessage}
+              </div>
+            )}
+            {filtered.map((entry) => {
+              if (!entry.precio || !calculatePayment) return null;
 
-            const payment = calculatePayment(
-              entry.entryTimestamp,
-              entry.precio,
-              entry.ownership
-            );
+              const payment = calculatePayment(
+                entry.entryTimestamp,
+                entry.precio,
+                entry.ownership
+              );
 
-            return (
-              <Card
-                key={entry.id}
-                className="border-none shadow-md rounded-2xl overflow-hidden"
-              >
-                <CardContent className="p-4 flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="h-12 w-12 rounded-2xl bg-destructive/10 flex items-center justify-center text-destructive">
-                      <LogOut className="h-6 w-6" />
+              const tieneConductor = entry.driver && entry.driver.id_conductor && entry.driver.id_conductor !== 1;
+
+              const handleSelect = () => {
+                if (!tieneConductor) {
+                  setErrorMessage("Falta registrar conductor");
+                  setTimeout(() => setErrorMessage(null), 3000);
+                  return;
+                }
+                onSelectExit(entry);
+              };
+
+              return (
+                <Card
+                  key={entry.id}
+                  className="border-none shadow-md hover:shadow-lg transition-all cursor-pointer rounded-2xl overflow-hidden"
+                  onClick={handleSelect}
+                >
+                  <CardContent className="p-0">
+                    <div className="flex items-stretch h-28">
+                      <div className="w-20 bg-destructive/10 flex items-center justify-center border-r border-destructive/5">
+                        <LogOut className="h-7 w-7 text-destructive" />
+                      </div>
+                      <div className="flex-1 p-4 flex flex-col justify-between">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="text-xl font-black font-mono tracking-tighter">
+                              {entry.plate1}
+                            </h3>
+                            <p className="text-xs text-muted-foreground font-bold flex items-center gap-1">
+                              <Ticket className="h-3 w-3" />
+                              Ticket #{entry.id}
+                            </p>
+                          </div>
+                          <div className="text-right mr-2">
+                            <p className="text-[10px] font-black text-muted-foreground uppercase">
+                              Total
+                            </p>
+                            {payment && (
+                              <p className="text-lg font-black text-primary">
+                                S/ {payment.total.toFixed(2)}
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
+                          <span className="flex items-center gap-1">
+                            <AlertCircle className="h-3 w-3" />
+                            {payment.timeString} transcurrido
+                          </span>
+                          <ChevronRight className="h-5 w-5 text-destructive/30" />
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-black font-mono text-lg">
-                        {entry.plate1}
-                      </h3>
-                      <p className="text-xs font-bold text-muted-foreground">
-                        {payment.timeString} transcurrido
-                      </p>
-                    </div>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <div className="text-right mr-2">
-                      <p className="text-[10px] font-black text-muted-foreground uppercase">
-                        Total
-                      </p>
-                      {payment && (
-                        <p className="text-lg font-black text-primary">
-                          S/ {payment.total.toFixed(2)}
-                        </p>
-                      )}
-                    </div>
-
-                    <Button
-                      size="icon"
-                      className="h-10 w-10 rounded-xl"
-                      onClick={() => onSelectExit(entry)}
-                    >
-                      <ChevronRight className="h-5 w-5" />
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </>
         )}
       </div>
     </div>
