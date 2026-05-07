@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Car, Truck, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 
 type Ownership = "particular" | "shon" | "abonado";
 

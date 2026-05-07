@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Calendar, Search } from "lucide-react";
+import { Clock, Calendar, Search, Truck, Ticket, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getIngresos, type IngresoDB } from "@/services/ingresos.service";
 import { EntryDetailView } from "./entry-detail-view";
@@ -49,7 +49,7 @@ export function EntriesView({ entries: externalEntries, onSelectEntry }: Entries
   }
   
   const filtered = displayEntries.filter((item) =>
-    item.id.includes(search)
+    item.plate1.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleSelect = (entry: VehicleEntry) => {
@@ -79,10 +79,10 @@ export function EntriesView({ entries: externalEntries, onSelectEntry }: Entries
       <div className="flex items-center gap-3 bg-card p-3 rounded-2xl shadow-sm border">
         <Search className="h-5 w-5 text-muted-foreground" />
         <Input
-          placeholder="Buscar por ID de ingreso..."
+          placeholder="Buscar por placa..."
           className="border-none shadow-none focus-visible:ring-0 p-0 h-8"
           value={search}
-          onChange={(e) => setSearch(e.target.value)}
+          onChange={(e) => setSearch(e.target.value.toUpperCase())}
         />
       </div>
 
@@ -94,7 +94,7 @@ export function EntriesView({ entries: externalEntries, onSelectEntry }: Entries
           </p>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 bg-muted/30 rounded-3xl border-2 border-dashed">
-            <Clock className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40" />
+            <Truck className="h-12 w-12 mx-auto mb-4 text-muted-foreground/40" />
             <p className="text-muted-foreground font-medium">
               No hay ingresos registrados
             </p>
@@ -103,29 +103,40 @@ export function EntriesView({ entries: externalEntries, onSelectEntry }: Entries
           filtered.map((item) => (
             <Card
               key={item.id}
-              className="cursor-pointer border-gray-300 shadow-md rounded-2xl overflow-hidden hover:scale-[1.01] transition"
+              className="border-none shadow-md hover:shadow-lg transition-all cursor-pointer rounded-2xl overflow-hidden"
               onClick={() => handleSelect(item)}
             >
-              <CardContent className="p-4 space-y-2">
-                <div className="flex justify-between items-center">
-                  <h3 className="font-black text-lg">
-                    Ingreso de Vehiculo #{item.id}
-                  </h3>
-                  <Badge className="bg-primary/10 text-primary border-none">
-                    Activo
-                  </Badge>
-                </div>
-
-                <div className="flex gap-6 text-sm font-bold text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Calendar className="h-4 w-4" />
-                    {item.entryDate}
-                  </span>
-
-                  <span className="flex items-center gap-1">
-                    <Clock className="h-4 w-4" />
-                    {item.entryTime}
-                  </span>
+              <CardContent className="p-0">
+                <div className="flex items-stretch h-28">
+                  <div className="w-24 bg-primary/10 flex flex-col items-center justify-center border-r border-primary/5">
+                    <Truck className="h-8 w-8 text-primary" />
+                    <span className="text-[10px] font-black uppercase mt-2 text-primary/60 tracking-widest">
+                      {item.type}
+                    </span>
+                  </div>
+                  <div className="flex-1 p-4 flex flex-col justify-between">
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <h3 className="text-xl font-black font-mono tracking-tighter">{item.plate1}</h3>
+                        <p className="text-xs text-muted-foreground font-bold flex items-center gap-1">
+                          <Ticket className="h-3 w-3" />
+                          Ticket #{item.id}
+                        </p>
+                      </div>
+                      <Badge className="rounded-full bg-emerald-500/10 text-emerald-600 border-none">Activo</Badge>
+                    </div>
+                    <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Calendar className="h-3 w-3" />
+                        {item.entryDate}
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {item.entryTime}
+                      </span>
+                      <ChevronRight className="h-5 w-5 text-primary/30" />
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
