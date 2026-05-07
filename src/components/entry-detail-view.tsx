@@ -58,6 +58,11 @@ export function EntryDetailView({
   const [dniFrontPreview, setDniFrontPreview] = useState<string | null>(null);
   const [dniBackPreview, setDniBackPreview] = useState<string | null>(null);
 
+  const [originalDniFront, setOriginalDniFront] = useState<string | null>(null);
+  const [originalDniBack, setOriginalDniBack] = useState<string | null>(null);
+
+  const [driverSaveSuccess, setDriverSaveSuccess] = useState(false);
+
   useEffect(() => {
     const loadDriverData = async () => {
       if (!entry.driver?.id_conductor) return;
@@ -95,9 +100,11 @@ export function EntryDetailView({
 
           if (conductor.ruta_anverso) {
             setDniFrontPreview(conductor.ruta_anverso);
+            setOriginalDniFront(conductor.ruta_anverso);
           }
           if (conductor.ruta_reverso) {
             setDniBackPreview(conductor.ruta_reverso);
+            setOriginalDniBack(conductor.ruta_reverso);
           }
 
           setIsEditingDriver(false);
@@ -132,17 +139,22 @@ export function EntryDetailView({
         ruta_reverso: undefined,
       });
 
-      let rutaAnverso: string | null = null;
-      let rutaReverso: string | null = null;
+      let rutaAnverso: string | null = originalDniFront;
+      let rutaReverso: string | null = originalDniBack;
 
-      if (dniFrontPreview && dniFrontPreview.startsWith("data:")) {
+      if (dniFrontPreview === null) {
+        rutaAnverso = null;
+      } else if (dniFrontPreview && dniFrontPreview.startsWith("data:")) {
         rutaAnverso = await uploadDniImageFromBase64(
           String(idConductor),
           dniFrontPreview,
           "anverso",
         );
       }
-      if (dniBackPreview && dniBackPreview.startsWith("data:")) {
+
+      if (dniBackPreview === null) {
+        rutaReverso = null;
+      } else if (dniBackPreview && dniBackPreview.startsWith("data:")) {
         rutaReverso = await uploadDniImageFromBase64(
           String(idConductor),
           dniBackPreview,
@@ -150,15 +162,13 @@ export function EntryDetailView({
         );
       }
 
-      if (rutaAnverso || rutaReverso) {
-        await supabase
-          .from("conductores")
-          .update({
-            ruta_anverso: rutaAnverso,
-            ruta_reverso: rutaReverso,
-          })
-          .eq("id_conductor", idConductor);
-      }
+      await supabase
+        .from("conductores")
+        .update({
+          ruta_anverso: rutaAnverso,
+          ruta_reverso: rutaReverso,
+        })
+        .eq("id_conductor", idConductor);
 
       await actualizarConductorEnIngreso(Number(entry.id), idConductor);
 
@@ -176,12 +186,16 @@ export function EntryDetailView({
 
       setDniFrontPreview(rutaAnverso);
       setDniBackPreview(rutaReverso);
+      setOriginalDniFront(rutaAnverso);
+      setOriginalDniBack(rutaReverso);
 
       onUpdate(entry.id, {
         driver: normalizedDriver,
       });
 
       setIsEditingDriver(false);
+      setDriverSaveSuccess(true);
+      setTimeout(() => setDriverSaveSuccess(false), 3000);
     } catch (error) {
       console.error("Error guardando conductor:", error);
       alert("Error al guardar el conductor");
@@ -520,8 +534,9 @@ export function EntryDetailView({
                       <Input
                         value={driverForm.dni}
                         disabled={dniLocked}
+                        className="uppercase"
                         onChange={async (e) => {
-                          const value = e.target.value;
+                          const value = e.target.value.toUpperCase();
 
                           setDriverForm({ ...driverForm, dni: value });
 
@@ -552,19 +567,21 @@ export function EntryDetailView({
                                 
                                 setDriverForm({
                                   id_conductor: c.id_conductor,
-                                  name: conductorCompleto?.nombre || c.nombre,
-                                  lastname: conductorCompleto?.apellidos || c.apellidos,
-                                  dni: c.dni,
-                                  phone: conductorCompleto?.telefono || c.telefono,
+                                  name: (conductorCompleto?.nombre || c.nombre || "").toUpperCase(),
+                                  lastname: (conductorCompleto?.apellidos || c.apellidos || "").toUpperCase(),
+                                  dni: (c.dni || "").toUpperCase(),
+                                  phone: (conductorCompleto?.telefono || c.telefono || "").toUpperCase(),
                                   dniFront: conductorCompleto?.ruta_anverso || "",
                                   dniBack: conductorCompleto?.ruta_reverso || "",
                                 });
 
                                 if (conductorCompleto?.ruta_anverso) {
                                   setDniFrontPreview(conductorCompleto.ruta_anverso);
+                                  setOriginalDniFront(conductorCompleto.ruta_anverso);
                                 }
                                 if (conductorCompleto?.ruta_reverso) {
                                   setDniBackPreview(conductorCompleto.ruta_reverso);
+                                  setOriginalDniBack(conductorCompleto.ruta_reverso);
                                 }
 
                                 setDniLocked(true);
@@ -586,8 +603,9 @@ export function EntryDetailView({
                     <Input
                       value={driverForm.phone}
                       disabled={dniLocked}
+                      className="uppercase"
                       onChange={(e) =>
-                        setDriverForm({ ...driverForm, phone: e.target.value })
+                        setDriverForm({ ...driverForm, phone: e.target.value.toUpperCase() })
                       }
                     />
                   </Field>
@@ -598,8 +616,9 @@ export function EntryDetailView({
                     <Input
                       value={driverForm.name}
                       disabled={dniLocked}
+                      className="uppercase"
                       onChange={(e) =>
-                        setDriverForm({ ...driverForm, name: e.target.value })
+                        setDriverForm({ ...driverForm, name: e.target.value.toUpperCase() })
                       }
                     />
                   </Field>
@@ -608,10 +627,11 @@ export function EntryDetailView({
                     <Input
                       value={driverForm.lastname}
                       disabled={dniLocked}
+                      className="uppercase"
                       onChange={(e) =>
                         setDriverForm({
                           ...driverForm,
-                          lastname: e.target.value,
+                          lastname: e.target.value.toUpperCase(),
                         })
                       }
                     />
@@ -731,6 +751,12 @@ export function EntryDetailView({
                     )}
                   </div>
                 </div>
+
+                {driverSaveSuccess && (
+                  <div className="bg-emerald-500/20 text-emerald-700 border border-emerald-500/30 rounded-lg p-3 text-center font-bold text-sm">
+                    Conductor guardado exitosamente
+                  </div>
+                )}
 
                 <Button
                   className="w-full bg-primary border-2 h-12 text-white"
