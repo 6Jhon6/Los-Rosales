@@ -52,6 +52,14 @@ function mapIngresoToEntry(i: IngresoDB): VehicleEntry {
     exitTime: undefined,
     status: "active",
     images: [],
+    precio: precios
+      ? {
+          horas: precios.horas,
+          diario: precios.diario,
+          shon_horas: precios.shon_horas,
+          shon_diario: precios.shon_diario,
+        }
+      : undefined,
     driver: conductor && i.id_conductor
       ? {
           id_conductor: i.id_conductor,
