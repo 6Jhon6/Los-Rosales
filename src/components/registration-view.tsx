@@ -153,6 +153,12 @@ export function RegistrationView({
         ...formData,
         images: [],
         id: idIngreso.toString(),
+        precio: {
+          horas: precioSeleccionado.horas,
+          diario: precioSeleccionado.diario,
+          shon_horas: precioSeleccionado.shon_horas,
+          shon_diario: precioSeleccionado.shon_diario,
+        },
       });
     } catch (error) {
       console.error(error);

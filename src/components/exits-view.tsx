@@ -19,9 +19,8 @@ export function ExitsView({ entries: externalEntries, onSelectExit, calculatePay
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
-  // 🔥 TRAER INGRESOS
   useEffect(() => {
-    if (externalEntries) {
+    if (externalEntries !== undefined) {
       setLoading(false);
       return;
     }
@@ -39,10 +38,15 @@ export function ExitsView({ entries: externalEntries, onSelectExit, calculatePay
     };
 
     fetchIngresos();
-  }, []);
+  }, [externalEntries]);
 
-  // 🔍 FILTRO
-  const displayEntries = externalEntries || entries;
+  let displayEntries: VehicleEntry[];
+  if (externalEntries !== undefined) {
+    displayEntries = externalEntries;
+  } else {
+    displayEntries = entries;
+  }
+  
   const filtered = useMemo(() => {
     return displayEntries.filter((e) => {
       return (

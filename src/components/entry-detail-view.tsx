@@ -440,6 +440,11 @@ export function EntryDetailView({
             {!isEditingDriver ? (
               /* ====== MODO VISTA ====== */
               <div className="space-y-6">
+                {driverSaveSuccess && (
+                  <div className="bg-emerald-500/20 text-emerald-700 border border-emerald-500/30 rounded-lg p-3 text-center font-bold text-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                    Conductor guardado exitosamente
+                  </div>
+                )}
                 {" "}
                 {/* Contenedor principal con separación vertical */}
                 {/* Sección de Datos de Texto */}
@@ -772,12 +777,6 @@ export function EntryDetailView({
                     )}
                   </div>
                 </div>
-
-                {driverSaveSuccess && (
-                  <div className="bg-emerald-500/20 text-emerald-700 border border-emerald-500/30 rounded-lg p-3 text-center font-bold text-sm">
-                    Conductor guardado exitosamente
-                  </div>
-                )}
 
                 <Button
                   className="w-full bg-primary border-2 h-12 text-white"

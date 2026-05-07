@@ -107,6 +107,7 @@ export function useParking() {
     driver?: Driver;
     images?: string[];
     vehicleImage?: string;
+    precio?: Precio;
   }) => {
     const now = new Date();
 
@@ -126,6 +127,7 @@ export function useParking() {
       images: data.images || [],
       vehicleImage: data.vehicleImage,
       driver: data.driver,
+      precio: data.precio,
     };
 
     setEntries((prev) => [newEntry, ...prev]);
