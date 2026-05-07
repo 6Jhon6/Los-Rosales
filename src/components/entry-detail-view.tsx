@@ -37,7 +37,8 @@ export function EntryDetailView({
     "detail",
   );
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [loadingImage, setLoadingImage] = useState<string | null>(null);
+  const [localImages, setLocalImages] = useState<string[]>(entry.images || []);
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
 
   const [isEditingDriver, setIsEditingDriver] = useState(!entry.driver);
 
@@ -212,6 +213,8 @@ export function EntryDetailView({
         onUpdate(entry.id, {
           images: imgs,
         });
+
+        setLocalImages(imgs);
       } catch (err) {
         console.error("Error cargando imágenes", err);
       }
@@ -219,6 +222,10 @@ export function EntryDetailView({
 
     loadImages();
   }, [entry.id]);
+
+  useEffect(() => {
+    setLocalImages(entry.images || []);
+  }, [entry.images]);
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -334,75 +341,89 @@ export function EntryDetailView({
       )}
 
       {activeTab === "images" && (
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-          {/* BOTÓN AGREGAR */}
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            hidden
-            id="camera-input"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-
-              try {
-                setLoadingImage("uploading");
-
-                // 1️⃣ subir imagen
-                await uploadIngresoImage(String(entry.id), file);
-
-                // 2️⃣ volver a cargar desde BD
-                const imgs = await getIngresoImages(Number(entry.id));
-
-                onUpdate(entry.id, {
-                  images: imgs,
-                });
-              } catch (err) {
-                alert("Error subiendo imagen: " + err);
-                console.error(err);
-              } finally {
-                setLoadingImage(null);
-                e.target.value = "";
-              }
-            }}
-          />
-
-          <button
-            onClick={() => document.getElementById("camera-input")?.click()}
-            className="aspect-square rounded-md border-dashed border-2 flex flex-col items-center justify-center hover:bg-muted transition text-muted-foreground"
-          >
-            <Plus className="h-5 w-5" />
-            <span className="text-xs">Agregar</span>
-          </button>
-
-          {/* IMÁGENES */}
-          {entry.images.map((img, i) => (
-            <div
-              key={i}
-              className="relative aspect-square rounded-md overflow-hidden border cursor-pointer group"
-              onClick={() => setSelectedImage(img)}
-            >
-              {/* LOADER */}
-              {loadingImage === img && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 z-10">
-                  <div className="h-6 w-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span className="text-xs text-white mt-2">Cargando...</span>
-                </div>
-              )}
-
-              <img
-                src={img}
-                className="w-full h-full object-cover object-center"
-                onLoad={() => setLoadingImage(null)}
-                onError={() => setLoadingImage(null)}
-              />
-
-              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                <Maximize2 className="h-5 w-5 text-white" />
-              </div>
+        <div className="space-y-3">
+          {uploadStatus === "uploading" && (
+            <div className="bg-blue-500/20 text-blue-700 border border-blue-500/30 rounded-lg p-3 text-center font-bold text-sm flex items-center justify-center gap-2">
+              <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              Subiendo imagen...
             </div>
-          ))}
+          )}
+
+          {uploadStatus === "success" && (
+            <div className="bg-emerald-500/20 text-emerald-700 border border-emerald-500/30 rounded-lg p-3 text-center font-bold text-sm">
+              Imagen subida exitosamente
+            </div>
+          )}
+
+          {uploadStatus === "error" && (
+            <div className="bg-red-500/20 text-red-700 border border-red-500/30 rounded-lg p-3 text-center font-bold text-sm">
+              Error al subir la imagen
+            </div>
+          )}
+
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {/* BOTÓN AGREGAR */}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              hidden
+              id="camera-input"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+
+                try {
+                  setUploadStatus("uploading");
+
+                  await uploadIngresoImage(String(entry.id), file);
+
+                  const imgs = await getIngresoImages(Number(entry.id));
+
+                  onUpdate(entry.id, {
+                    images: imgs,
+                  });
+
+                  setLocalImages(imgs);
+                  setUploadStatus("success");
+                  setTimeout(() => setUploadStatus("idle"), 3000);
+                } catch (err) {
+                  console.error("Error subiendo imagen:", err);
+                  setUploadStatus("error");
+                  setTimeout(() => setUploadStatus("idle"), 3000);
+                } finally {
+                  e.target.value = "";
+                }
+              }}
+            />
+
+            <button
+              onClick={() => document.getElementById("camera-input")?.click()}
+              className="aspect-square rounded-md border-dashed border-2 flex flex-col items-center justify-center hover:bg-muted transition text-muted-foreground"
+            >
+              <Plus className="h-5 w-5" />
+              <span className="text-xs">Agregar</span>
+            </button>
+
+            {/* IMÁGENES */}
+            {localImages.map((img, i) => (
+              <div
+                key={i}
+                className="relative aspect-square rounded-md overflow-hidden border cursor-pointer group"
+                onClick={() => setSelectedImage(img)}
+              >
+                <img
+                  src={img}
+                  className="w-full h-full object-cover object-center"
+                  alt={`Imagen ${i + 1}`}
+                />
+
+                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <Maximize2 className="h-5 w-5 text-white" />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
