@@ -1,6 +1,6 @@
 "use client"
 
-import { Car, BarChart3, UserIcon, LogOut } from "lucide-react"
+import { Car, UserIcon, LogOut, Sun, Moon } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import type { User } from "@/types/parking"
 import {
@@ -12,16 +12,37 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { useState, useEffect } from "react"
 
 interface HeaderProps {
   user: User | null
   onLogout: () => void
-  onViewStats: () => void
   onGoHome: () => void
   onViewProfile: () => void
 }
 
-export function Header({ user, onLogout, onViewStats, onGoHome, onViewProfile }: HeaderProps) {
+export function Header({ user, onLogout, onGoHome, onViewProfile }: HeaderProps) {
+  const [isDark, setIsDark] = useState(false)
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem("theme")
+    if (savedTheme === "dark" || (!savedTheme && window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+      setIsDark(true)
+      document.documentElement.classList.add("dark")
+    }
+  }, [])
+
+  const toggleTheme = () => {
+    if (isDark) {
+      document.documentElement.classList.remove("dark")
+      localStorage.setItem("theme", "light")
+    } else {
+      document.documentElement.classList.add("dark")
+      localStorage.setItem("theme", "dark")
+    }
+    setIsDark(!isDark)
+  }
+
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between px-4 mx-auto max-w-4xl">
@@ -34,8 +55,12 @@ export function Header({ user, onLogout, onViewStats, onGoHome, onViewProfile }:
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" onClick={onViewStats}>
-            <BarChart3 className="h-5 w-5 text-muted-foreground" />
+          <Button variant="ghost" size="icon" onClick={toggleTheme}>
+            {isDark ? (
+              <Sun className="h-5 w-5 text-muted-foreground" />
+            ) : (
+              <Moon className="h-5 w-5 text-muted-foreground" />
+            )}
           </Button>
 
           {user && (

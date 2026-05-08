@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Car, Truck, FileText } from "lucide-react";
+import { FileText } from "lucide-react";
 
 type Ownership = "particular" | "shon" | "abonado";
 
@@ -32,8 +32,8 @@ export function RegistrationView({
   onCancel,
 }: RegistrationViewProps) {
   /* =========================
-     ESTADOS
-  ========================= */
+      ESTADOS
+   ========================= */
   const [precios, setPrecios] = useState<PrecioDB[]>([]);
   const [loadingPrices, setLoadingPrices] = useState(true);
 
@@ -48,6 +48,18 @@ export function RegistrationView({
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
 
   const [vehiculoSeleccionado, setVehiculoSeleccionado] = useState(false);
+
+  const resetForm = () => {
+    setFormData({
+      plate1: "",
+      plate2: "",
+      ownership: "particular",
+      type: precios[0]?.tipo_vehiculo || "",
+    });
+    setVehiculoSeleccionado(false);
+    setSugerencias([]);
+    setMostrarSugerencias(false);
+  };
 
   /* =========================
      CARGAR PRECIOS
@@ -137,7 +149,7 @@ export function RegistrationView({
         return;
       }
 
-      await registrarVehiculoYIngreso({
+      const idIngreso = await registrarVehiculoYIngreso({
         placa_1: formData.plate1,
         placa_2: formData.plate2 || null,
         empresa:
@@ -152,6 +164,13 @@ export function RegistrationView({
       onRegister({
         ...formData,
         images: [],
+        id: idIngreso.toString(),
+        precio: {
+          horas: precioSeleccionado.horas,
+          diario: precioSeleccionado.diario,
+          shon_horas: precioSeleccionado.shon_horas,
+          shon_diario: precioSeleccionado.shon_diario,
+        },
       });
     } catch (error) {
       console.error(error);
@@ -175,16 +194,27 @@ export function RegistrationView({
               <Input
                 value={formData.plate1}
                 onChange={(e) => {
-                  const value = e.target.value.toUpperCase();
+                  let value = e.target.value.toUpperCase();
+
+                  const soloLetrasNumeros = value.replace(/[^A-Z0-9]/g, "");
+
+                  if (soloLetrasNumeros.length > 3 && value.indexOf("-") === -1) {
+                    value = soloLetrasNumeros.slice(0, 3) + "-" + soloLetrasNumeros.slice(3, 7);
+                  } else if (soloLetrasNumeros.length <= 3) {
+                    value = soloLetrasNumeros;
+                  }
+
+                  if (value === "" || value === "-") {
+                    resetForm();
+                    return;
+                  }
 
                   setFormData({
                     ...formData,
                     plate1: value,
                   });
 
-                  if (value === "") {
-                    setVehiculoSeleccionado(false);
-                  }
+                  setVehiculoSeleccionado(false);
                 }}
               />
 
@@ -213,12 +243,22 @@ export function RegistrationView({
               <Input
                 value={formData.plate2}
                 disabled={vehiculoSeleccionado}
-                onChange={(e) =>
+                onChange={(e) => {
+                  let value = e.target.value.toUpperCase();
+
+                  const soloLetrasNumeros = value.replace(/[^A-Z0-9]/g, "");
+
+                  if (soloLetrasNumeros.length > 3 && value.indexOf("-") === -1) {
+                    value = soloLetrasNumeros.slice(0, 3) + "-" + soloLetrasNumeros.slice(3, 7);
+                  } else if (soloLetrasNumeros.length <= 3) {
+                    value = soloLetrasNumeros;
+                  }
+
                   setFormData({
                     ...formData,
-                    plate2: e.target.value.toUpperCase(),
-                  })
-                }
+                    plate2: value,
+                  });
+                }}
               />
             </div>
           </div>
@@ -291,13 +331,6 @@ export function RegistrationView({
             )}
           </div>
 
-          {/* ICONO */}
-          {formData.type.toLowerCase().includes("auto") ? (
-            <Car className="mx-auto text-primary/40" />
-          ) : (
-            <Truck className="mx-auto text-primary/40" />
-          )}
-
           {/* BOTONES */}
           <Button
             className="w-full text-lg"
@@ -307,9 +340,11 @@ export function RegistrationView({
             Confirmar Ingreso <FileText className="ml-2" />
           </Button>
 
-          <Button variant="ghost" onClick={onCancel}>
-            Cancelar
-          </Button>
+          <div className="flex justify-center">
+            <Button variant="ghost" onClick={onCancel}>
+              Cancelar
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -7,20 +7,7 @@ export interface IngresoDB {
   id_conductor: number | null;
   fecha_inicio: string;
   hora_inicio: string;
-  vehiculos: {
-    empresa: "PARTICULAR" | "SHON" | "ABONADO";
-    placa_1: string;
-    placa_2: string | null;
-    precios:
-      | {
-          tipo_vehiculo: string;
-          horas: number;
-          diario: number;
-          shon_horas: number;
-          shon_diario: number;
-        }[]
-      | null;
-  }[];
+  vehiculos: any;
 }
 
 export async function getIngresos(): Promise<IngresoDB[]> {

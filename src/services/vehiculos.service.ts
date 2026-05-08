@@ -35,19 +35,25 @@ export async function buscarVehiculosPorPlaca(placa: string) {
 /* =========================
    REGISTRAR INGRESO
 ========================= */
-export async function registrarIngreso(id_vehiculo: number) {
+export async function registrarIngreso(id_vehiculo: number): Promise<number> {
   const timestamp = new Date().toISOString();
 
-  const { error } = await supabase.from("ingresos").insert({
-    id_vehiculo,
-    fecha_inicio: timestamp,
-    hora_inicio: timestamp,
-  });
+  const { data, error } = await supabase
+    .from("ingresos")
+    .insert({
+      id_vehiculo,
+      fecha_inicio: timestamp,
+      hora_inicio: timestamp,
+    })
+    .select("id_ingreso")
+    .single();
 
   if (error) {
     console.error("Error registrando ingreso:", error);
     throw error;
   }
+
+  return data.id_ingreso;
 }
 
 /* =========================
@@ -63,7 +69,7 @@ interface RegistrarVehiculoParams {
 
 export async function registrarVehiculoYIngreso(
   vehiculo: RegistrarVehiculoParams
-) {
+): Promise<number> {
   // 1️⃣ Verificar si ya existe
   const { data: existente } = await supabase
     .from("vehiculos")
@@ -94,10 +100,10 @@ export async function registrarVehiculoYIngreso(
     id_vehiculo = data.id_vehiculo;
   }
 
-  // 2️⃣ Registrar ingreso (SIEMPRE)
-  await registrarIngreso(id_vehiculo);
+  // 2️⃣ Registrar ingreso y obtener ID
+  const id_ingreso = await registrarIngreso(id_vehiculo);
 
-  return id_vehiculo;
+  return id_ingreso;
 }
 
 export async function getVehiculos(limit: number = 20) {

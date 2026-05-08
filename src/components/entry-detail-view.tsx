@@ -37,7 +37,8 @@ export function EntryDetailView({
     "detail",
   );
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
-  const [loadingImage, setLoadingImage] = useState<string | null>(null);
+  const [localImages, setLocalImages] = useState<string[]>(entry.images || []);
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
 
   const [isEditingDriver, setIsEditingDriver] = useState(!entry.driver);
 
@@ -58,11 +59,29 @@ export function EntryDetailView({
   const [dniFrontPreview, setDniFrontPreview] = useState<string | null>(null);
   const [dniBackPreview, setDniBackPreview] = useState<string | null>(null);
 
+  const [originalDniFront, setOriginalDniFront] = useState<string | null>(null);
+  const [originalDniBack, setOriginalDniBack] = useState<string | null>(null);
+
+  const [driverSaveSuccess, setDriverSaveSuccess] = useState(false);
+
   useEffect(() => {
     const loadDriverData = async () => {
       if (!entry.driver?.id_conductor) return;
 
       if (entry.driver.id_conductor === 1) {
+        setDriverForm({
+          id_conductor: 1,
+          name: "",
+          lastname: "",
+          dni: "",
+          phone: "",
+          dniFront: "",
+          dniBack: "",
+        });
+        setDniFrontPreview(null);
+        setDniBackPreview(null);
+        setDniLocked(false);
+        setDniSuggestions([]);
         setIsEditingDriver(true);
         return;
       }
@@ -82,9 +101,11 @@ export function EntryDetailView({
 
           if (conductor.ruta_anverso) {
             setDniFrontPreview(conductor.ruta_anverso);
+            setOriginalDniFront(conductor.ruta_anverso);
           }
           if (conductor.ruta_reverso) {
             setDniBackPreview(conductor.ruta_reverso);
+            setOriginalDniBack(conductor.ruta_reverso);
           }
 
           setIsEditingDriver(false);
@@ -119,17 +140,22 @@ export function EntryDetailView({
         ruta_reverso: undefined,
       });
 
-      let rutaAnverso: string | null = null;
-      let rutaReverso: string | null = null;
+      let rutaAnverso: string | null = originalDniFront;
+      let rutaReverso: string | null = originalDniBack;
 
-      if (dniFrontPreview && dniFrontPreview.startsWith("data:")) {
+      if (dniFrontPreview === null) {
+        rutaAnverso = null;
+      } else if (dniFrontPreview && dniFrontPreview.startsWith("data:")) {
         rutaAnverso = await uploadDniImageFromBase64(
           String(idConductor),
           dniFrontPreview,
           "anverso",
         );
       }
-      if (dniBackPreview && dniBackPreview.startsWith("data:")) {
+
+      if (dniBackPreview === null) {
+        rutaReverso = null;
+      } else if (dniBackPreview && dniBackPreview.startsWith("data:")) {
         rutaReverso = await uploadDniImageFromBase64(
           String(idConductor),
           dniBackPreview,
@@ -137,15 +163,13 @@ export function EntryDetailView({
         );
       }
 
-      if (rutaAnverso || rutaReverso) {
-        await supabase
-          .from("conductores")
-          .update({
-            ruta_anverso: rutaAnverso,
-            ruta_reverso: rutaReverso,
-          })
-          .eq("id_conductor", idConductor);
-      }
+      await supabase
+        .from("conductores")
+        .update({
+          ruta_anverso: rutaAnverso,
+          ruta_reverso: rutaReverso,
+        })
+        .eq("id_conductor", idConductor);
 
       await actualizarConductorEnIngreso(Number(entry.id), idConductor);
 
@@ -163,12 +187,16 @@ export function EntryDetailView({
 
       setDniFrontPreview(rutaAnverso);
       setDniBackPreview(rutaReverso);
+      setOriginalDniFront(rutaAnverso);
+      setOriginalDniBack(rutaReverso);
 
       onUpdate(entry.id, {
         driver: normalizedDriver,
       });
 
       setIsEditingDriver(false);
+      setDriverSaveSuccess(true);
+      setTimeout(() => setDriverSaveSuccess(false), 3000);
     } catch (error) {
       console.error("Error guardando conductor:", error);
       alert("Error al guardar el conductor");
@@ -185,6 +213,8 @@ export function EntryDetailView({
         onUpdate(entry.id, {
           images: imgs,
         });
+
+        setLocalImages(imgs);
       } catch (err) {
         console.error("Error cargando imágenes", err);
       }
@@ -192,6 +222,10 @@ export function EntryDetailView({
 
     loadImages();
   }, [entry.id]);
+
+  useEffect(() => {
+    setLocalImages(entry.images || []);
+  }, [entry.images]);
 
   return (
     <div className="space-y-6 pb-20 animate-in fade-in slide-in-from-right-4 duration-300">
@@ -307,75 +341,89 @@ export function EntryDetailView({
       )}
 
       {activeTab === "images" && (
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-          {/* BOTÓN AGREGAR */}
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            hidden
-            id="camera-input"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
-
-              try {
-                setLoadingImage("uploading");
-
-                // 1️⃣ subir imagen
-                await uploadIngresoImage(String(entry.id), file);
-
-                // 2️⃣ volver a cargar desde BD
-                const imgs = await getIngresoImages(Number(entry.id));
-
-                onUpdate(entry.id, {
-                  images: imgs,
-                });
-              } catch (err) {
-                alert("Error subiendo imagen: " + err);
-                console.error(err);
-              } finally {
-                setLoadingImage(null);
-                e.target.value = "";
-              }
-            }}
-          />
-
-          <button
-            onClick={() => document.getElementById("camera-input")?.click()}
-            className="aspect-square rounded-md border-dashed border-2 flex flex-col items-center justify-center hover:bg-muted transition text-muted-foreground"
-          >
-            <Plus className="h-5 w-5" />
-            <span className="text-xs">Agregar</span>
-          </button>
-
-          {/* IMÁGENES */}
-          {entry.images.map((img, i) => (
-            <div
-              key={i}
-              className="relative aspect-square rounded-md overflow-hidden border cursor-pointer group"
-              onClick={() => setSelectedImage(img)}
-            >
-              {/* LOADER */}
-              {loadingImage === img && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20 z-10">
-                  <div className="h-6 w-6 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  <span className="text-xs text-white mt-2">Cargando...</span>
-                </div>
-              )}
-
-              <img
-                src={img}
-                className="w-full h-full object-cover object-center"
-                onLoad={() => setLoadingImage(null)}
-                onError={() => setLoadingImage(null)}
-              />
-
-              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                <Maximize2 className="h-5 w-5 text-white" />
-              </div>
+        <div className="space-y-3">
+          {uploadStatus === "uploading" && (
+            <div className="bg-blue-500/20 text-blue-700 border border-blue-500/30 rounded-lg p-3 text-center font-bold text-sm flex items-center justify-center gap-2">
+              <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              Subiendo imagen...
             </div>
-          ))}
+          )}
+
+          {uploadStatus === "success" && (
+            <div className="bg-emerald-500/20 text-emerald-700 border border-emerald-500/30 rounded-lg p-3 text-center font-bold text-sm">
+              Imagen subida exitosamente
+            </div>
+          )}
+
+          {uploadStatus === "error" && (
+            <div className="bg-red-500/20 text-red-700 border border-red-500/30 rounded-lg p-3 text-center font-bold text-sm">
+              Error al subir la imagen
+            </div>
+          )}
+
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {/* BOTÓN AGREGAR */}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              hidden
+              id="camera-input"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+
+                try {
+                  setUploadStatus("uploading");
+
+                  await uploadIngresoImage(String(entry.id), file);
+
+                  const imgs = await getIngresoImages(Number(entry.id));
+
+                  onUpdate(entry.id, {
+                    images: imgs,
+                  });
+
+                  setLocalImages(imgs);
+                  setUploadStatus("success");
+                  setTimeout(() => setUploadStatus("idle"), 3000);
+                } catch (err) {
+                  console.error("Error subiendo imagen:", err);
+                  setUploadStatus("error");
+                  setTimeout(() => setUploadStatus("idle"), 3000);
+                } finally {
+                  e.target.value = "";
+                }
+              }}
+            />
+
+            <button
+              onClick={() => document.getElementById("camera-input")?.click()}
+              className="aspect-square rounded-md border-dashed border-2 flex flex-col items-center justify-center hover:bg-muted transition text-muted-foreground"
+            >
+              <Plus className="h-5 w-5" />
+              <span className="text-xs">Agregar</span>
+            </button>
+
+            {/* IMÁGENES */}
+            {localImages.map((img, i) => (
+              <div
+                key={i}
+                className="relative aspect-square rounded-md overflow-hidden border cursor-pointer group"
+                onClick={() => setSelectedImage(img)}
+              >
+                <img
+                  src={img}
+                  className="w-full h-full object-cover object-center"
+                  alt={`Imagen ${i + 1}`}
+                />
+
+                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <Maximize2 className="h-5 w-5 text-white" />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -392,6 +440,11 @@ export function EntryDetailView({
             {!isEditingDriver ? (
               /* ====== MODO VISTA ====== */
               <div className="space-y-6">
+                {driverSaveSuccess && (
+                  <div className="bg-emerald-500/20 text-emerald-700 border border-emerald-500/30 rounded-lg p-3 text-center font-bold text-sm animate-in fade-in slide-in-from-top-2 duration-300">
+                    Conductor guardado exitosamente
+                  </div>
+                )}
                 {" "}
                 {/* Contenedor principal con separación vertical */}
                 {/* Sección de Datos de Texto */}
@@ -507,40 +560,55 @@ export function EntryDetailView({
                       <Input
                         value={driverForm.dni}
                         disabled={dniLocked}
+                        className="uppercase"
                         onChange={async (e) => {
-                          const value = e.target.value;
+                          const value = e.target.value.toUpperCase();
 
                           setDriverForm({ ...driverForm, dni: value });
 
-                          // 🔓 Si borra DNI → desbloquear
                           if (!value) {
                             setDniLocked(false);
                             setDniSuggestions([]);
                             return;
                           }
 
-                          // 🔍 Buscar sugerencias
-                          const results = await buscarConductoresPorDni(value);
-                          setDniSuggestions(results);
+                          if (value.length >= 3) {
+                            const results = await buscarConductoresPorDni(value);
+                            setDniSuggestions(results);
+                          } else {
+                            setDniSuggestions([]);
+                          }
                         }}
                       />
 
-                      {/* 🔽 SUGERENCIAS */}
                       {dniSuggestions.length > 0 && !dniLocked && (
-                        <div className="absolute z-20 mt-1 w-full bg-white border rounded-lg shadow-md">
+                        <div className="absolute z-20 mt-1 w-full bg-white border rounded-lg shadow-md max-h-40 overflow-y-auto">
                           {dniSuggestions.map((c) => (
                             <button
                               key={c.id_conductor}
                               type="button"
-                              className="w-full text-left px-3 py-2 hover:bg-muted text-sm"
-                              onClick={() => {
+                              className="w-full text-left px-3 py-2 hover:bg-muted text-sm border-b last:border-b-0"
+                              onClick={async () => {
+                                const conductorCompleto = await getConductorPorId(c.id_conductor);
+                                
                                 setDriverForm({
                                   id_conductor: c.id_conductor,
-                                  name: c.nombre,
-                                  lastname: c.apellidos,
-                                  dni: c.dni,
-                                  phone: c.telefono,
+                                  name: (conductorCompleto?.nombre || c.nombre || "").toUpperCase(),
+                                  lastname: (conductorCompleto?.apellidos || c.apellidos || "").toUpperCase(),
+                                  dni: (c.dni || "").toUpperCase(),
+                                  phone: (conductorCompleto?.telefono || c.telefono || "").toUpperCase(),
+                                  dniFront: conductorCompleto?.ruta_anverso || "",
+                                  dniBack: conductorCompleto?.ruta_reverso || "",
                                 });
+
+                                if (conductorCompleto?.ruta_anverso) {
+                                  setDniFrontPreview(conductorCompleto.ruta_anverso);
+                                  setOriginalDniFront(conductorCompleto.ruta_anverso);
+                                }
+                                if (conductorCompleto?.ruta_reverso) {
+                                  setDniBackPreview(conductorCompleto.ruta_reverso);
+                                  setOriginalDniBack(conductorCompleto.ruta_reverso);
+                                }
 
                                 setDniLocked(true);
                                 setDniSuggestions([]);
@@ -561,8 +629,9 @@ export function EntryDetailView({
                     <Input
                       value={driverForm.phone}
                       disabled={dniLocked}
+                      className="uppercase"
                       onChange={(e) =>
-                        setDriverForm({ ...driverForm, phone: e.target.value })
+                        setDriverForm({ ...driverForm, phone: e.target.value.toUpperCase() })
                       }
                     />
                   </Field>
@@ -573,8 +642,9 @@ export function EntryDetailView({
                     <Input
                       value={driverForm.name}
                       disabled={dniLocked}
+                      className="uppercase"
                       onChange={(e) =>
-                        setDriverForm({ ...driverForm, name: e.target.value })
+                        setDriverForm({ ...driverForm, name: e.target.value.toUpperCase() })
                       }
                     />
                   </Field>
@@ -583,10 +653,11 @@ export function EntryDetailView({
                     <Input
                       value={driverForm.lastname}
                       disabled={dniLocked}
+                      className="uppercase"
                       onChange={(e) =>
                         setDriverForm({
                           ...driverForm,
-                          lastname: e.target.value,
+                          lastname: e.target.value.toUpperCase(),
                         })
                       }
                     />
@@ -637,14 +708,18 @@ export function EntryDetailView({
                   <div className="grid grid-cols-2 gap-3">
                     {/* DNI FRONTAL */}
                     {dniFrontPreview ? (
-                      <div className="relative rounded-lg border h-32 overflow-hidden group">
+                      <div 
+                        className="relative rounded-lg border h-32 overflow-hidden group cursor-pointer"
+                        onClick={() => setSelectedImage(dniFrontPreview)}
+                      >
                         <img
                           src={dniFrontPreview}
                           className="w-full h-full object-cover"
                         />
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setDniFrontPreview(null);
                             setDriverForm({ ...driverForm, dniFront: "" });
                           }}
@@ -668,14 +743,18 @@ export function EntryDetailView({
 
                     {/* DNI POSTERIOR */}
                     {dniBackPreview ? (
-                      <div className="relative rounded-lg border h-32 overflow-hidden group">
+                      <div 
+                        className="relative rounded-lg border h-32 overflow-hidden group cursor-pointer"
+                        onClick={() => setSelectedImage(dniBackPreview)}
+                      >
                         <img
                           src={dniBackPreview}
                           className="w-full h-full object-cover"
                         />
                         <button
                           type="button"
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             setDniBackPreview(null);
                             setDriverForm({ ...driverForm, dniBack: "" });
                           }}
@@ -731,7 +810,7 @@ export function EntryDetailView({
       >
         <DialogContent className="p-0 border-none bg-black/90 hideClose={true}">
           <button
-            className="absolute top-4 right-4 bg-white/20 rounded-full p-2"
+            className="absolute top-4 right-4 bg-white/40 hover:bg-white/60 rounded-full p-2 transition-colors"
             onClick={() => setSelectedImage(null)}
           >
             <X className="h-6 w-6 text-white" />
