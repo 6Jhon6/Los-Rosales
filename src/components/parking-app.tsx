@@ -220,7 +220,6 @@ export default function ParkingApp() {
       <Header
         user={user}
         onLogout={handleLogout}
-        onViewStats={() => setView("stats")}
         onGoHome={() => setView("home")}
         onViewProfile={() => setView("profile")}
       />
