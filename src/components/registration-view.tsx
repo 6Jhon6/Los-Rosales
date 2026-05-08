@@ -194,9 +194,17 @@ export function RegistrationView({
               <Input
                 value={formData.plate1}
                 onChange={(e) => {
-                  const value = e.target.value.toUpperCase();
+                  let value = e.target.value.toUpperCase();
 
-                  if (value === "") {
+                  const soloLetrasNumeros = value.replace(/[^A-Z0-9]/g, "");
+
+                  if (soloLetrasNumeros.length > 3 && value.indexOf("-") === -1) {
+                    value = soloLetrasNumeros.slice(0, 3) + "-" + soloLetrasNumeros.slice(3, 7);
+                  } else if (soloLetrasNumeros.length <= 3) {
+                    value = soloLetrasNumeros;
+                  }
+
+                  if (value === "" || value === "-") {
                     resetForm();
                     return;
                   }
@@ -235,12 +243,22 @@ export function RegistrationView({
               <Input
                 value={formData.plate2}
                 disabled={vehiculoSeleccionado}
-                onChange={(e) =>
+                onChange={(e) => {
+                  let value = e.target.value.toUpperCase();
+
+                  const soloLetrasNumeros = value.replace(/[^A-Z0-9]/g, "");
+
+                  if (soloLetrasNumeros.length > 3 && value.indexOf("-") === -1) {
+                    value = soloLetrasNumeros.slice(0, 3) + "-" + soloLetrasNumeros.slice(3, 7);
+                  } else if (soloLetrasNumeros.length <= 3) {
+                    value = soloLetrasNumeros;
+                  }
+
                   setFormData({
                     ...formData,
-                    plate2: e.target.value.toUpperCase(),
-                  })
-                }
+                    plate2: value,
+                  });
+                }}
               />
             </div>
           </div>

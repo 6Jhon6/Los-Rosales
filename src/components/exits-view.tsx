@@ -49,9 +49,11 @@ export function ExitsView({ entries: externalEntries, onSelectExit, calculatePay
   
   const filtered = useMemo(() => {
     return displayEntries.filter((e) => {
+      const searchLower = search.toLowerCase();
       return (
         e.status === "active" &&
-        e.plate1.toLowerCase().includes(search.toLowerCase())
+        (e.plate1.toLowerCase().includes(searchLower) ||
+          e.id.toLowerCase().includes(searchLower))
       );
     });
   }, [displayEntries, search]);

@@ -48,9 +48,13 @@ export function EntriesView({ entries: externalEntries, onSelectEntry }: Entries
     displayEntries = ingresos.map(mapIngresoToEntry);
   }
   
-  const filtered = displayEntries.filter((item) =>
-    item.plate1.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = displayEntries.filter((item) => {
+    const searchLower = search.toLowerCase();
+    return (
+      item.plate1.toLowerCase().includes(searchLower) ||
+      item.id.toLowerCase().includes(searchLower)
+    );
+  });
 
   const handleSelect = (entry: VehicleEntry) => {
     if (onSelectEntry) {
@@ -108,9 +112,9 @@ export function EntriesView({ entries: externalEntries, onSelectEntry }: Entries
             >
               <CardContent className="p-0">
                 <div className="flex items-stretch h-28">
-                  <div className="w-24 bg-primary/10 flex flex-col items-center justify-center border-r border-primary/5">
-                    <Truck className="h-8 w-8 text-primary" />
-                    <span className="text-[10px] font-black uppercase mt-2 text-primary/60 tracking-widest">
+                  <div className="w-24 bg-emerald-500/10 flex flex-col items-center justify-center border-r border-emerald-500/5">
+                    <Truck className="h-8 w-8 text-emerald-600" />
+                    <span className="text-[10px] font-black uppercase mt-2 text-emerald-600/60 tracking-widest">
                       {item.type}
                     </span>
                   </div>

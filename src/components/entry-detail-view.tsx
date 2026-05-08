@@ -810,7 +810,7 @@ export function EntryDetailView({
       >
         <DialogContent className="p-0 border-none bg-black/90 hideClose={true}">
           <button
-            className="absolute top-4 right-4 bg-white/20 rounded-full p-2"
+            className="absolute top-4 right-4 bg-white/40 hover:bg-white/60 rounded-full p-2 transition-colors"
             onClick={() => setSelectedImage(null)}
           >
             <X className="h-6 w-6 text-white" />

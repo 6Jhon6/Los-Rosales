@@ -36,6 +36,7 @@ export function ExitPreviewView({
   const [activeTab, setActiveTab] = useState<"detail" | "images">("detail");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [exitImages, setExitImages] = useState<string[]>([]);
+  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
 
   useEffect(() => {
     const loadImages = async () => {
@@ -214,6 +215,26 @@ export function ExitPreviewView({
 
       {/* FOTOS */}
       {activeTab === "images" && (
+        <div className="space-y-3">
+          {uploadStatus === "uploading" && (
+            <div className="bg-blue-500/20 text-blue-700 border border-blue-500/30 rounded-lg p-3 text-center font-bold text-sm flex items-center justify-center gap-2">
+              <div className="h-4 w-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+              Subiendo imagen...
+            </div>
+          )}
+
+          {uploadStatus === "success" && (
+            <div className="bg-emerald-500/20 text-emerald-700 border border-emerald-500/30 rounded-lg p-3 text-center font-bold text-sm">
+              Imagen subida exitosamente
+            </div>
+          )}
+
+          {uploadStatus === "error" && (
+            <div className="bg-red-500/20 text-red-700 border border-red-500/30 rounded-lg p-3 text-center font-bold text-sm">
+              Error al subir la imagen
+            </div>
+          )}
+
         <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
           {/* INPUT CAMARA */}
           <input
@@ -227,14 +248,19 @@ export function ExitPreviewView({
               if (!file) return;
 
               try {
+                setUploadStatus("uploading");
+
                 await uploadSalidaImage(String(entry.id), file);
 
                 const imgs = await getSalidaImages(Number(entry.id));
 
                 setExitImages(imgs);
+                setUploadStatus("success");
+                setTimeout(() => setUploadStatus("idle"), 3000);
               } catch (err) {
-                alert("Error subiendo imagen");
-                console.error(err);
+                console.error("Error subiendo imagen:", err);
+                setUploadStatus("error");
+                setTimeout(() => setUploadStatus("idle"), 3000);
               } finally {
                 e.target.value = "";
               }
@@ -270,6 +296,7 @@ export function ExitPreviewView({
             </div>
           ))}
         </div>
+        </div>
       )}
 
       {/* MODAL IMAGEN */}
@@ -279,7 +306,7 @@ export function ExitPreviewView({
       >
         <DialogContent className="p-0 border-none bg-black/90 hideClose={true}">
           <button
-            className="absolute top-4 right-4 bg-white/20 rounded-full p-2"
+            className="absolute top-4 right-4 bg-white/40 hover:bg-white/60 rounded-full p-2 transition-colors"
             onClick={() => setSelectedImage(null)}
           >
             <X className="h-6 w-6 text-white" />
