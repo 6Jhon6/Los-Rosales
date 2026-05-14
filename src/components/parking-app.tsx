@@ -1,6 +1,7 @@
 "use client";
 
 import type React from "react";
+import type { VehicleEntry } from "@/types/parking";
 
 import { useEffect, useState } from "react";
 import { Header } from "@/components/header";
@@ -61,6 +62,16 @@ export default function ParkingApp() {
     confirmExit,
     calculatePayment,
   } = useParking();
+
+  const updateEntryAndSyncSelection = (
+    id: string,
+    updates: Partial<VehicleEntry>,
+  ) => {
+    updateEntry(id, updates);
+    setSelectedItem((prev: any) =>
+      prev?.id === id ? { ...prev, ...updates } : prev,
+    );
+  };
 
   const [toast, setToast] = useState<{
     message: string;
@@ -371,7 +382,7 @@ export default function ParkingApp() {
         {view === "detail" && selectedItem && (
           <EntryDetailView
             entry={selectedItem}
-            onUpdate={updateEntry}
+            onUpdate={updateEntryAndSyncSelection}
             onBack={() => setView("list")}
           />
         )}
@@ -401,12 +412,16 @@ export default function ParkingApp() {
             return (
               <ExitPreviewView
                 entry={selectedItem}
-                payment={calculatePayment(selectedItem.entryTimestamp, {
-                  horas: precioDB.horas,
-                  diario: precioDB.diario,
-                  shon_horas: precioDB.shon_horas,
-                  shon_diario: precioDB.shon_diario,
-                }, selectedItem.ownership)}
+                payment={calculatePayment(
+                  selectedItem.entryTimestamp,
+                  {
+                    horas: precioDB.horas,
+                    diario: precioDB.diario,
+                    shon_horas: precioDB.shon_horas,
+                    shon_diario: precioDB.shon_diario,
+                  },
+                  selectedItem.ownership,
+                )}
                 onConfirm={async (id) => {
                   try {
                     const payment = calculatePayment(
@@ -436,12 +451,16 @@ export default function ParkingApp() {
                     const nuevoTotal = await obtenerRecaudacionHoy();
                     setRevenueHoy(nuevoTotal);
 
-                    await confirmExit(id, {
-                      horas: precioDB.horas,
-                      diario: precioDB.diario,
-                      shon_horas: precioDB.shon_horas,
-                      shon_diario: precioDB.shon_diario,
-                    }, selectedItem.ownership);
+                    await confirmExit(
+                      id,
+                      {
+                        horas: precioDB.horas,
+                        diario: precioDB.diario,
+                        shon_horas: precioDB.shon_horas,
+                        shon_diario: precioDB.shon_diario,
+                      },
+                      selectedItem.ownership,
+                    );
 
                     playSuccessSound();
 

@@ -34,7 +34,9 @@ function formatTime(dateStr: string): string {
 
 function mapIngresoToEntry(i: IngresoDB): VehicleEntry {
   const vehiculosData = i.vehiculos;
-  const vehiculo = Array.isArray(vehiculosData) ? vehiculosData[0] : vehiculosData;
+  const vehiculo = Array.isArray(vehiculosData)
+    ? vehiculosData[0]
+    : vehiculosData;
   const conductor = i.conductores;
 
   const preciosData = vehiculo?.precios;
@@ -45,7 +47,9 @@ function mapIngresoToEntry(i: IngresoDB): VehicleEntry {
     plate1: vehiculo?.placa_1 ?? "NO ENCONTRADO",
     plate2: vehiculo?.placa_2 ?? "",
     type: precios?.tipo_vehiculo ?? "",
-    ownership: (vehiculo?.empresa?.toLowerCase() as "particular" | "shon" | "abonado") ?? "particular",
+    ownership:
+      (vehiculo?.empresa?.toLowerCase() as "particular" | "shon" | "abonado") ??
+      "particular",
     entryDate: formatDate(i.fecha_inicio),
     entryTime: formatTime(i.fecha_inicio),
     entryTimestamp: new Date(i.fecha_inicio).getTime(),
@@ -60,17 +64,19 @@ function mapIngresoToEntry(i: IngresoDB): VehicleEntry {
           shon_diario: precios.shon_diario,
         }
       : undefined,
-    driver: conductor && i.id_conductor
-      ? {
-          id_conductor: i.id_conductor,
-          name: conductor.nombre,
-          lastname: conductor.apellidos,
-          dni: conductor.dni,
-          phone: conductor.telefono,
-          dniFront: "",
-          dniBack: "",
-        }
-      : undefined,
+    driver:
+      conductor && i.id_conductor
+        ? {
+            id_conductor: i.id_conductor,
+            name: conductor.nombre,
+            lastname: conductor.apellidos,
+            dni: conductor.dni,
+            phone: conductor.telefono,
+            dniFront: "",
+            dniBack: "",
+          }
+        : undefined,
+    id_conductor: i.id_conductor ?? undefined,
   };
 }
 
@@ -127,6 +133,7 @@ export function useParking() {
       images: data.images || [],
       vehicleImage: data.vehicleImage,
       driver: data.driver,
+      id_conductor: data.driver?.id_conductor ?? 1,
       precio: data.precio,
     };
 
@@ -149,7 +156,7 @@ export function useParking() {
     }
   };
 
-/* =========================
+  /* =========================
       CALCULAR PAGO (DINÁMICO)
    ========================== */
   const calculatePayment = (
@@ -205,7 +212,7 @@ export function useParking() {
     };
   };
 
-/* =========================
+  /* =========================
      CONFIRMAR SALIDA
    ========================== */
   const confirmExit = (
