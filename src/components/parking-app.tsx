@@ -85,6 +85,7 @@ export default function ParkingApp() {
   const [loginPass, setLoginPass] = useState("admin123");
 
   const [successEntry, setSuccessEntry] = useState<any>(null);
+  const [isExiting, setIsExiting] = useState(false);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -422,7 +423,10 @@ export default function ParkingApp() {
                   },
                   selectedItem.ownership,
                 )}
+                isConfirmingDisabled={isExiting}
+                onConfirmingChange={setIsExiting}
                 onConfirm={async (id) => {
+                  setIsExiting(true);
                   try {
                     const payment = calculatePayment(
                       selectedItem.entryTimestamp,
@@ -468,6 +472,8 @@ export default function ParkingApp() {
                     setView("exits");
                   } catch (error) {
                     showToast("Error registrando la salida", "error");
+                  } finally {
+                    setIsExiting(false);
                   }
                 }}
                 onBack={() => setView("exits")}

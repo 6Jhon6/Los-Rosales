@@ -340,11 +340,11 @@ export function EntryDetailView({
               <DetailRow label="Propiedad" value={entry.ownership} uppercase />
               <DetailRow
                 label="Fecha de Ingreso"
-                value={formatDateDMY(entry.entryDate)}
+                value={formatDateDMY(entry.entryDate, entry.entryTimestamp)}
               />
               <DetailRow
                 label="Hora de Ingreso"
-                value={formatTimeAMPM(entry.entryTime)}
+                value={formatTimeAMPM(entry.entryTime, entry.entryTimestamp)}
               />
 
               {entry.status === "exited" && (
@@ -934,23 +934,21 @@ function DetailRow({
   );
 }
 
-function formatTimeAMPM(time?: string) {
-  if (!time) return "-";
+function formatTimeAMPM(time?: string, timestamp?: number) {
+  if (!time && !timestamp) return "-";
 
-  // Si viene ISO (2025-12-08T20:33:07.937Z)
-  if (time.includes("T")) {
-    const date = new Date(time);
-    return date.toLocaleTimeString("es-PE", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
+  let date: Date;
+  if (timestamp) {
+    date = new Date(timestamp);
+  } else if (time?.includes("T")) {
+    date = new Date(time!);
+  } else {
+    const [hour, minute] = time!.split(":").map(Number);
+    date = new Date();
+    date.setHours(hour, minute);
   }
 
-  // Si viene HH:mm
-  const [hour, minute] = time.split(":").map(Number);
-  const date = new Date();
-  date.setHours(hour, minute);
+  if (isNaN(date.getTime())) return "-";
 
   return date.toLocaleTimeString("es-PE", {
     hour: "numeric",
@@ -959,10 +957,23 @@ function formatTimeAMPM(time?: string) {
   });
 }
 
-function formatDateDMY(date?: string) {
-  if (!date) return "-";
+function formatDateDMY(date?: string, timestamp?: number) {
+  if (!date && !timestamp) return "-";
 
-  const d = new Date(date);
+  let d: Date;
+  if (timestamp) {
+    d = new Date(timestamp);
+  } else {
+    d = new Date(date!);
+    if (isNaN(d.getTime())) {
+      const parts = date!.split("/");
+      if (parts.length === 3) {
+        d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+      }
+    }
+  }
+
+  if (isNaN(d.getTime())) return "-";
 
   return d.toLocaleDateString("es-PE", {
     day: "2-digit",

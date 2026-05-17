@@ -24,6 +24,8 @@ interface ExitPreviewViewProps {
   onConfirm: (id: string) => void;
   onBack: (showAlert?: boolean) => void;
   showToast: (msg: string, type?: "success" | "error") => void;
+  isConfirmingDisabled?: boolean;
+  onConfirmingChange?: (confirming: boolean) => void;
 }
 
 export function ExitPreviewView({
@@ -32,11 +34,14 @@ export function ExitPreviewView({
   onConfirm,
   onBack,
   showToast: _showToast,
+  isConfirmingDisabled,
+  onConfirmingChange,
 }: ExitPreviewViewProps) {
   const [activeTab, setActiveTab] = useState<"detail" | "images">("detail");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [exitImages, setExitImages] = useState<string[]>([]);
   const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const loadImages = async () => {
@@ -196,10 +201,24 @@ export function ExitPreviewView({
           <div className="bg-muted/50 p-6 space-y-3">
             <Button
               className="w-full py-4 rounded-xl font-bold text-base bg-emerald-600 hover:bg-emerald-700 gap-2"
-              onClick={() => onConfirm(entry.id)}
+              disabled={isSubmitting || isConfirmingDisabled}
+              onClick={() => {
+                setIsSubmitting(true);
+                onConfirmingChange?.(true);
+                onConfirm(entry.id);
+              }}
             >
-              <LogOut className="h-5 w-5" />
-              Confirmar Salida
+              {isSubmitting || isConfirmingDisabled ? (
+                <>
+                  <span className="animate-spin mr-2">⏳</span>
+                  Procesando...
+                </>
+              ) : (
+                <>
+                  <LogOut className="h-5 w-5" />
+                  Confirmar Salida
+                </>
+              )}
             </Button>
 
             <Button

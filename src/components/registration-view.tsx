@@ -48,6 +48,7 @@ export function RegistrationView({
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
 
   const [vehiculoSeleccionado, setVehiculoSeleccionado] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const resetForm = () => {
     setFormData({
@@ -139,6 +140,9 @@ export function RegistrationView({
      SUBMIT
   ========================= */
   const handleSubmit = async () => {
+    if (isSubmitting) return;
+
+    setIsSubmitting(true);
     try {
       const precioSeleccionado = precios.find(
         (p) => p.tipo_vehiculo === formData.type,
@@ -175,6 +179,8 @@ export function RegistrationView({
     } catch (error) {
       console.error(error);
       alert("Error al registrar el ingreso");
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -335,9 +341,18 @@ export function RegistrationView({
           <Button
             className="w-full text-lg"
             onClick={handleSubmit}
-            disabled={!formData.plate1}
+            disabled={!formData.plate1 || isSubmitting}
           >
-            Confirmar Ingreso <FileText className="ml-2" />
+            {isSubmitting ? (
+              <>
+                <span className="animate-spin mr-2">⏳</span>
+                Registrando...
+              </>
+            ) : (
+              <>
+                Confirmar Ingreso <FileText className="ml-2" />
+              </>
+            )}
           </Button>
 
           <div className="flex justify-center">
