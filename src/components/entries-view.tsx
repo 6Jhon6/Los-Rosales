@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Calendar, Search, Truck, Ticket, ChevronRight } from "lucide-react";
+import { Clock, Calendar, Search, Truck, Ticket, ChevronRight, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getIngresos, type IngresoDB } from "@/services/ingresos.service";
 import { EntryDetailView } from "./entry-detail-view";
@@ -119,16 +119,23 @@ export function EntriesView({ entries: externalEntries, onSelectEntry }: Entries
                     </span>
                   </div>
                   <div className="flex-1 p-4 flex flex-col justify-between">
-                    <div className="flex justify-between items-start">
-                      <div>
-                        <h3 className="text-xl font-black font-mono tracking-tighter">{item.plate1}</h3>
-                        <p className="text-xs text-muted-foreground font-bold flex items-center gap-1">
-                          <Ticket className="h-3 w-3" />
-                          Ticket #{item.id}
-                        </p>
+<div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="text-xl font-black font-mono tracking-tighter">{item.plate1}</h3>
+                          <p className="text-xs text-muted-foreground font-bold flex items-center gap-1">
+                            <Ticket className="h-3 w-3" />
+                            Ticket #{item.id}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          {item.id_conductor === 1 && (
+                            <div className="flex items-center gap-1 bg-red-500/20 text-red-600 px-2 py-1 rounded-full">
+                              <AlertCircle className="h-4 w-4" />
+                            </div>
+                          )}
+                          <Badge className="rounded-full bg-emerald-500/10 text-emerald-600 border-none">Activo</Badge>
+                        </div>
                       </div>
-                      <Badge className="rounded-full bg-emerald-500/10 text-emerald-600 border-none">Activo</Badge>
-                    </div>
                     <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
@@ -178,6 +185,7 @@ function mapIngresoToEntry(i: IngresoDB): VehicleEntry {
           dniBack: "",
         }
       : undefined,
+    id_conductor: i.id_conductor ?? undefined,
   };
 }
 

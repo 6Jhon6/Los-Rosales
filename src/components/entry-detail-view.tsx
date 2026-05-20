@@ -6,7 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ChevronLeft, Plus, Maximize2, X, Pencil, User } from "lucide-react";
+import {
+  AlertCircle,
+  ChevronLeft,
+  Plus,
+  Maximize2,
+  X,
+  Pencil,
+  User,
+} from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import {
   crearOActualizarConductor,
@@ -38,7 +46,9 @@ export function EntryDetailView({
   );
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [localImages, setLocalImages] = useState<string[]>(entry.images || []);
-  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
+  const [uploadStatus, setUploadStatus] = useState<
+    "idle" | "uploading" | "success" | "error"
+  >("idle");
 
   const [isEditingDriver, setIsEditingDriver] = useState(!entry.driver);
 
@@ -122,7 +132,12 @@ export function EntryDetailView({
 
   const saveDriver = async () => {
     try {
-      if (!driverForm.dni || !driverForm.name || !driverForm.lastname || !driverForm.phone) {
+      if (
+        !driverForm.dni ||
+        !driverForm.name ||
+        !driverForm.lastname ||
+        !driverForm.phone
+      ) {
         alert("Por favor complete todos los campos requeridos");
         return;
       }
@@ -192,6 +207,7 @@ export function EntryDetailView({
 
       onUpdate(entry.id, {
         driver: normalizedDriver,
+        id_conductor: idConductor,
       });
 
       setIsEditingDriver(false);
@@ -206,7 +222,7 @@ export function EntryDetailView({
   useEffect(() => {
     const loadImages = async () => {
       if (!entry.id || isNaN(Number(entry.id))) return;
-      
+
       try {
         const imgs = await getIngresoImages(Number(entry.id));
 
@@ -258,7 +274,16 @@ export function EntryDetailView({
           >
             {tab === "detail" && "Detalle"}
             {tab === "images" && "Fotos"}
-            {tab === "driver" && "Conductor"}
+            {tab === "driver" && (
+              <span className="flex items-center gap-1">
+                Conductor
+                {entry.id_conductor === 1 && (
+                  <div className="flex items-center gap-1 bg-red-500/20 text-red-600 px-2 py-1 rounded-full">
+                    <AlertCircle className="h-4 w-4" />
+                  </div>
+                )}
+              </span>
+            )}
           </Button>
         ))}
       </div>
@@ -315,11 +340,11 @@ export function EntryDetailView({
               <DetailRow label="Propiedad" value={entry.ownership} uppercase />
               <DetailRow
                 label="Fecha de Ingreso"
-                value={formatDateDMY(entry.entryDate)}
+                value={formatDateDMY(entry.entryDate, entry.entryTimestamp)}
               />
               <DetailRow
                 label="Hora de Ingreso"
-                value={formatTimeAMPM(entry.entryTime)}
+                value={formatTimeAMPM(entry.entryTime, entry.entryTimestamp)}
               />
 
               {entry.status === "exited" && (
@@ -444,8 +469,7 @@ export function EntryDetailView({
                   <div className="bg-emerald-500/20 text-emerald-700 border border-emerald-500/30 rounded-lg p-3 text-center font-bold text-sm animate-in fade-in slide-in-from-top-2 duration-300">
                     Conductor guardado exitosamente
                   </div>
-                )}
-                {" "}
+                )}{" "}
                 {/* Contenedor principal con separación vertical */}
                 {/* Sección de Datos de Texto */}
                 <div className="grid grid-cols-1 gap-3">
@@ -473,7 +497,6 @@ export function EntryDetailView({
                     <p className="font-bold">{driverForm.phone}</p>
                   </div>
                 </div>
-
                 {/* Fotos del DNI */}
                 {(driverForm.dniFront || driverForm.dniBack) && (
                   <div className="space-y-2">
@@ -484,7 +507,9 @@ export function EntryDetailView({
                       {driverForm.dniFront && (
                         <div
                           className="rounded-lg border overflow-hidden cursor-pointer"
-                          onClick={() => setSelectedImage(driverForm.dniFront || null)}
+                          onClick={() =>
+                            setSelectedImage(driverForm.dniFront || null)
+                          }
                         >
                           <img
                             src={driverForm.dniFront}
@@ -496,7 +521,9 @@ export function EntryDetailView({
                       {driverForm.dniBack && (
                         <div
                           className="rounded-lg border overflow-hidden cursor-pointer"
-                          onClick={() => setSelectedImage(driverForm.dniBack || null)}
+                          onClick={() =>
+                            setSelectedImage(driverForm.dniBack || null)
+                          }
                         >
                           <img
                             src={driverForm.dniBack}
@@ -515,8 +542,13 @@ export function EntryDetailView({
                   onClick={async () => {
                     setDriverOriginal(driverForm);
 
-                    if (entry.driver?.id_conductor && entry.driver.id_conductor !== 1) {
-                      const conductor = await getConductorPorId(entry.driver.id_conductor);
+                    if (
+                      entry.driver?.id_conductor &&
+                      entry.driver.id_conductor !== 1
+                    ) {
+                      const conductor = await getConductorPorId(
+                        entry.driver.id_conductor,
+                      );
                       if (conductor) {
                         setDriverForm({
                           id_conductor: conductor.id_conductor,
@@ -573,7 +605,8 @@ export function EntryDetailView({
                           }
 
                           if (value.length >= 3) {
-                            const results = await buscarConductoresPorDni(value);
+                            const results =
+                              await buscarConductoresPorDni(value);
                             setDniSuggestions(results);
                           } else {
                             setDniSuggestions([]);
@@ -589,25 +622,48 @@ export function EntryDetailView({
                               type="button"
                               className="w-full text-left px-3 py-2 hover:bg-muted text-sm border-b last:border-b-0"
                               onClick={async () => {
-                                const conductorCompleto = await getConductorPorId(c.id_conductor);
-                                
+                                const conductorCompleto =
+                                  await getConductorPorId(c.id_conductor);
+
                                 setDriverForm({
                                   id_conductor: c.id_conductor,
-                                  name: (conductorCompleto?.nombre || c.nombre || "").toUpperCase(),
-                                  lastname: (conductorCompleto?.apellidos || c.apellidos || "").toUpperCase(),
+                                  name: (
+                                    conductorCompleto?.nombre ||
+                                    c.nombre ||
+                                    ""
+                                  ).toUpperCase(),
+                                  lastname: (
+                                    conductorCompleto?.apellidos ||
+                                    c.apellidos ||
+                                    ""
+                                  ).toUpperCase(),
                                   dni: (c.dni || "").toUpperCase(),
-                                  phone: (conductorCompleto?.telefono || c.telefono || "").toUpperCase(),
-                                  dniFront: conductorCompleto?.ruta_anverso || "",
-                                  dniBack: conductorCompleto?.ruta_reverso || "",
+                                  phone: (
+                                    conductorCompleto?.telefono ||
+                                    c.telefono ||
+                                    ""
+                                  ).toUpperCase(),
+                                  dniFront:
+                                    conductorCompleto?.ruta_anverso || "",
+                                  dniBack:
+                                    conductorCompleto?.ruta_reverso || "",
                                 });
 
                                 if (conductorCompleto?.ruta_anverso) {
-                                  setDniFrontPreview(conductorCompleto.ruta_anverso);
-                                  setOriginalDniFront(conductorCompleto.ruta_anverso);
+                                  setDniFrontPreview(
+                                    conductorCompleto.ruta_anverso,
+                                  );
+                                  setOriginalDniFront(
+                                    conductorCompleto.ruta_anverso,
+                                  );
                                 }
                                 if (conductorCompleto?.ruta_reverso) {
-                                  setDniBackPreview(conductorCompleto.ruta_reverso);
-                                  setOriginalDniBack(conductorCompleto.ruta_reverso);
+                                  setDniBackPreview(
+                                    conductorCompleto.ruta_reverso,
+                                  );
+                                  setOriginalDniBack(
+                                    conductorCompleto.ruta_reverso,
+                                  );
                                 }
 
                                 setDniLocked(true);
@@ -631,7 +687,10 @@ export function EntryDetailView({
                       disabled={dniLocked}
                       className="uppercase"
                       onChange={(e) =>
-                        setDriverForm({ ...driverForm, phone: e.target.value.toUpperCase() })
+                        setDriverForm({
+                          ...driverForm,
+                          phone: e.target.value.toUpperCase(),
+                        })
                       }
                     />
                   </Field>
@@ -644,7 +703,10 @@ export function EntryDetailView({
                       disabled={dniLocked}
                       className="uppercase"
                       onChange={(e) =>
-                        setDriverForm({ ...driverForm, name: e.target.value.toUpperCase() })
+                        setDriverForm({
+                          ...driverForm,
+                          name: e.target.value.toUpperCase(),
+                        })
                       }
                     />
                   </Field>
@@ -708,7 +770,7 @@ export function EntryDetailView({
                   <div className="grid grid-cols-2 gap-3">
                     {/* DNI FRONTAL */}
                     {dniFrontPreview ? (
-                      <div 
+                      <div
                         className="relative rounded-lg border h-32 overflow-hidden group cursor-pointer"
                         onClick={() => setSelectedImage(dniFrontPreview)}
                       >
@@ -743,7 +805,7 @@ export function EntryDetailView({
 
                     {/* DNI POSTERIOR */}
                     {dniBackPreview ? (
-                      <div 
+                      <div
                         className="relative rounded-lg border h-32 overflow-hidden group cursor-pointer"
                         onClick={() => setSelectedImage(dniBackPreview)}
                       >
@@ -872,23 +934,21 @@ function DetailRow({
   );
 }
 
-function formatTimeAMPM(time?: string) {
-  if (!time) return "-";
+function formatTimeAMPM(time?: string, timestamp?: number) {
+  if (!time && !timestamp) return "-";
 
-  // Si viene ISO (2025-12-08T20:33:07.937Z)
-  if (time.includes("T")) {
-    const date = new Date(time);
-    return date.toLocaleTimeString("es-PE", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
+  let date: Date;
+  if (timestamp) {
+    date = new Date(timestamp);
+  } else if (time?.includes("T")) {
+    date = new Date(time!);
+  } else {
+    const [hour, minute] = time!.split(":").map(Number);
+    date = new Date();
+    date.setHours(hour, minute);
   }
 
-  // Si viene HH:mm
-  const [hour, minute] = time.split(":").map(Number);
-  const date = new Date();
-  date.setHours(hour, minute);
+  if (isNaN(date.getTime())) return "-";
 
   return date.toLocaleTimeString("es-PE", {
     hour: "numeric",
@@ -897,10 +957,23 @@ function formatTimeAMPM(time?: string) {
   });
 }
 
-function formatDateDMY(date?: string) {
-  if (!date) return "-";
+function formatDateDMY(date?: string, timestamp?: number) {
+  if (!date && !timestamp) return "-";
 
-  const d = new Date(date);
+  let d: Date;
+  if (timestamp) {
+    d = new Date(timestamp);
+  } else {
+    d = new Date(date!);
+    if (isNaN(d.getTime())) {
+      const parts = date!.split("/");
+      if (parts.length === 3) {
+        d = new Date(`${parts[2]}-${parts[1]}-${parts[0]}`);
+      }
+    }
+  }
+
+  if (isNaN(d.getTime())) return "-";
 
   return d.toLocaleDateString("es-PE", {
     day: "2-digit",

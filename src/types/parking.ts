@@ -37,6 +37,7 @@ export type VehicleEntry = {
   exitTime?: ReactNode;
   exitTimestamp?: number;
   driver?: Driver;
+  id_conductor?: number;
   totalToPay?: number;
   vehicleImage?: string;
 };
