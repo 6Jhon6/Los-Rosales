@@ -40,7 +40,9 @@ export function ExitPreviewView({
   const [activeTab, setActiveTab] = useState<"detail" | "images">("detail");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [exitImages, setExitImages] = useState<string[]>([]);
-  const [uploadStatus, setUploadStatus] = useState<"idle" | "uploading" | "success" | "error">("idle");
+  const [uploadStatus, setUploadStatus] = useState<
+    "idle" | "uploading" | "success" | "error"
+  >("idle");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -254,67 +256,67 @@ export function ExitPreviewView({
             </div>
           )}
 
-        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-          {/* INPUT CAMARA */}
-          <input
-            type="file"
-            accept="image/*"
-            capture="environment"
-            hidden
-            id="exit-camera-input"
-            onChange={async (e) => {
-              const file = e.target.files?.[0];
-              if (!file) return;
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+            {/* INPUT CAMARA */}
+            <input
+              type="file"
+              accept="image/*"
+              capture="environment"
+              hidden
+              id="exit-camera-input"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
 
-              try {
-                setUploadStatus("uploading");
+                try {
+                  setUploadStatus("uploading");
 
-                await uploadSalidaImage(String(entry.id), file);
+                  await uploadSalidaImage(String(entry.id), file);
 
-                const imgs = await getSalidaImages(Number(entry.id));
+                  const imgs = await getSalidaImages(Number(entry.id));
 
-                setExitImages(imgs);
-                setUploadStatus("success");
-                setTimeout(() => setUploadStatus("idle"), 3000);
-              } catch (err) {
-                console.error("Error subiendo imagen:", err);
-                setUploadStatus("error");
-                setTimeout(() => setUploadStatus("idle"), 3000);
-              } finally {
-                e.target.value = "";
+                  setExitImages(imgs);
+                  setUploadStatus("success");
+                  setTimeout(() => setUploadStatus("idle"), 3000);
+                } catch (err) {
+                  console.error("Error subiendo imagen:", err);
+                  setUploadStatus("error");
+                  setTimeout(() => setUploadStatus("idle"), 3000);
+                } finally {
+                  e.target.value = "";
+                }
+              }}
+            />
+
+            {/* BOTON AGREGAR */}
+            <button
+              onClick={() =>
+                document.getElementById("exit-camera-input")?.click()
               }
-            }}
-          />
-
-          {/* BOTON AGREGAR */}
-          <button
-            onClick={() =>
-              document.getElementById("exit-camera-input")?.click()
-            }
-            className="aspect-square rounded-md border-dashed border-2 flex flex-col items-center justify-center hover:bg-muted transition text-muted-foreground"
-          >
-            <Plus className="h-5 w-5" />
-            <span className="text-xs">Agregar</span>
-          </button>
-
-          {/* IMAGENES */}
-          {exitImages.map((img, i) => (
-            <div
-              key={i}
-              className="relative aspect-square rounded-md overflow-hidden border cursor-pointer group"
-              onClick={() => setSelectedImage(img)}
+              className="aspect-square rounded-md border-dashed border-2 flex flex-col items-center justify-center hover:bg-muted transition text-muted-foreground"
             >
-              <img
-                src={img}
-                className="w-full h-full object-cover object-center"
-              />
+              <Plus className="h-5 w-5" />
+              <span className="text-xs">Agregar</span>
+            </button>
 
-              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-                <Maximize2 className="h-5 w-5 text-white" />
+            {/* IMAGENES */}
+            {exitImages.map((img, i) => (
+              <div
+                key={i}
+                className="relative aspect-square rounded-md overflow-hidden border cursor-pointer group"
+                onClick={() => setSelectedImage(img)}
+              >
+                <img
+                  src={img}
+                  className="w-full h-full object-cover object-center"
+                />
+
+                <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+                  <Maximize2 className="h-5 w-5 text-white" />
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -368,7 +370,16 @@ function formatTimeAMPM(time?: string) {
 function formatDateOnly(date?: string) {
   if (!date) return "-";
 
-  const d = new Date(date);
+  let d: Date;
+
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(date)) {
+    const [day, month, year] = date.split("/").map(Number);
+    d = new Date(year, month - 1, day);
+  } else {
+    d = new Date(date);
+  }
+
+  if (Number.isNaN(d.getTime())) return date;
 
   return d.toLocaleDateString("es-PE", {
     day: "2-digit",
